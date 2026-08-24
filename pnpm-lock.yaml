@@ -11,12 +11,18 @@ importers:
       '@kubohiroya/vite-plugin-turbowarp-extension':
         specifier: 0.1.0
         version: 0.1.0(vite@7.3.6(@types/node@26.2.0))
+      '@teachablemachine/image':
+        specifier: 0.8.5
+        version: 0.8.5(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))
       '@teachablemachine/pose':
         specifier: 0.8.3
         version: 0.8.3(@tensorflow/tfjs-converter@1.3.1(@tensorflow/tfjs-core@1.3.1))(@tensorflow/tfjs-core@1.3.1)(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))
       '@tensorflow-models/posenet':
         specifier: 2.2.2
         version: 2.2.2(@tensorflow/tfjs-converter@1.3.1(@tensorflow/tfjs-core@1.3.1))(@tensorflow/tfjs-core@1.3.1)
+      '@tensorflow-models/speech-commands':
+        specifier: 0.4.0
+        version: 0.4.0(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))
       '@tensorflow/tfjs':
         specifier: 1.3.1
         version: 1.3.1(seedrandom@3.0.5)
@@ -338,6 +344,11 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@teachablemachine/image@0.8.5':
+    resolution: {integrity: sha512-u6BLQ8RBn38BKee7mmAl+HS9qWgM/2YmUbQYy21eQfqhb7E8xT5LDp7QqEU31rtgEIMDwB/OG8cjmSiuHpqb7A==}
+    peerDependencies:
+      '@tensorflow/tfjs': 1.3.1
+
   '@teachablemachine/pose@0.8.3':
     resolution: {integrity: sha512-HpX3MMfTej8+vRxoiFrcLyQoWpYP+5ryKotqcyo3F8FgxFfFGu1iVYxR9ESRzFBNIRj119/lWYbhdeMQFdJYEA==}
     peerDependencies:
@@ -348,6 +359,11 @@ packages:
     peerDependencies:
       '@tensorflow/tfjs-converter': ^3.0.0-rc.1
       '@tensorflow/tfjs-core': ^3.0.0-rc.1
+
+  '@tensorflow-models/speech-commands@0.4.0':
+    resolution: {integrity: sha512-OtG9QElQwts9j+gF2ZfyjG8xZa9rZq600Op9LhUYi59OvhuCSpof3vkwLP3oyMhMOrEFfAn546dHuA5dLfdK1A==}
+    peerDependencies:
+      '@tensorflow/tfjs': ^1.3.0
 
   '@tensorflow/tfjs-converter@1.3.1':
     resolution: {integrity: sha512-8IHzcIZwqCofcRBhaCTN6W73m2RGdBDH6BEORf0KDdbgbz4DouItVcKX692PrA8gchY+Xy8ZHMpj93PcAOs17g==}
@@ -876,6 +892,12 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@teachablemachine/image@0.8.5(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))':
+    dependencies:
+      '@tensorflow/tfjs': 1.3.1(seedrandom@3.0.5)
+      autobind-decorator: 2.4.0
+      seedrandom: 2.4.3
+
   '@teachablemachine/pose@0.8.3(@tensorflow/tfjs-converter@1.3.1(@tensorflow/tfjs-core@1.3.1))(@tensorflow/tfjs-core@1.3.1)(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))':
     dependencies:
       '@tensorflow-models/posenet': 2.2.2(@tensorflow/tfjs-converter@1.3.1(@tensorflow/tfjs-core@1.3.1))(@tensorflow/tfjs-core@1.3.1)
@@ -890,6 +912,10 @@ snapshots:
     dependencies:
       '@tensorflow/tfjs-converter': 1.3.1(@tensorflow/tfjs-core@1.3.1)
       '@tensorflow/tfjs-core': 1.3.1
+
+  '@tensorflow-models/speech-commands@0.4.0(@tensorflow/tfjs@1.3.1(seedrandom@3.0.5))':
+    dependencies:
+      '@tensorflow/tfjs': 1.3.1(seedrandom@3.0.5)
 
   '@tensorflow/tfjs-converter@1.3.1(@tensorflow/tfjs-core@1.3.1)':
     dependencies:

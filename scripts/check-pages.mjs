@@ -22,7 +22,7 @@ function localReferences(html) {
 function resolveReference(pagePath, reference) {
   const pathOnly = decodeURIComponent(reference.split(/[?#]/, 1)[0]);
   const target = pathOnly.startsWith('/')
-    ? join(docsRoot, pathOnly.replace(/^\/turbowarp-tmpose\/?/, ''))
+    ? join(docsRoot, pathOnly.replace(/^\/turbowarp-tm\/?/, ''))
     : resolve(dirname(pagePath), pathOnly);
   return target.endsWith('/') ? join(target, 'index.html') : target;
 }

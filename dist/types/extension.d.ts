@@ -2,16 +2,24 @@ import { type FeatureFlags } from './config/feature-flags.js';
 import { type PoseOverlayConfidenceProperty } from './pose-overlay.js';
 export declare const EXTENSION_ID = "tmpose";
 export declare const VERSION: string;
-export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tmpose/";
+export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tm/";
 export declare const ACCUMULATED_POSE_CHANGED_EVENT = "TMPOSE_ACCUMULATED_POSE_CHANGED";
 export declare const BLOCK_ICON_URI: string;
-export interface TMPoseRuntime {
+export type RecognitionMode = 'pose' | 'image' | 'audio';
+export interface TeachableMachineRuntime {
     Webcam: new (width: number, height: number, flipHorizontal: boolean) => any;
     load?(modelURL: string, metadataURL: string): Promise<any>;
     loadFromFiles?(model: File, weights: File, metadata: File): Promise<any>;
 }
+export interface TeachableMachineAudioRuntime {
+    load(modelURL: string, metadataURL: string): Promise<any>;
+}
+export type TMPoseRuntime = TeachableMachineRuntime;
 export interface TMPoseExtensionDependencies {
-    runtime?: TMPoseRuntime;
+    runtime?: TeachableMachineRuntime;
+    poseRuntime?: TeachableMachineRuntime;
+    imageRuntime?: TeachableMachineRuntime;
+    audioRuntime?: TeachableMachineAudioRuntime;
     allowRemoteLibraries?: boolean;
     onAccumulatedPoseChanged?: (event: AccumulatedPoseChangedEventV2) => void;
 }
@@ -68,6 +76,13 @@ export declare class TMPoseExtension {
                     value: string;
                 }[];
             };
+            recognitionModeMenu: {
+                acceptReporters: boolean;
+                items: {
+                    text: any;
+                    value: RecognitionMode;
+                }[];
+            };
             poseOverlayVisibilityMenu: {
                 acceptReporters: boolean;
                 items: {
@@ -97,7 +112,10 @@ export declare class TMPoseExtension {
     };
     versionReporter(): string;
     setLastError(error: any): void;
+    setRecognitionMode(args: any): void;
+    recognitionModeReporter(): any;
     setModelURL(args: any): void;
+    activeRuntime(): TeachableMachineRuntime | TeachableMachineAudioRuntime | null;
     ensureLibrariesLoaded(): Promise<void>;
     cleanupCameraResources(): void;
     startCamera(): Promise<void>;
@@ -140,6 +158,10 @@ export declare class TMPoseExtension {
     startRecognition(): Promise<void>;
     stopRecognition(): void;
     isRecognizing(): any;
+    startAudioRecognition(): Promise<void>;
+    stopAudioRecognition(): void;
+    audioPredictionFromResult(model: any, result: any): any;
+    applyPredictions(prediction: any): void;
     findStageElement(): Element;
     findLikelyStageCanvas(): HTMLCanvasElement;
     validatePreviewAttachment(stage: any, canvas: any): void;
@@ -155,6 +177,10 @@ export declare class TMPoseExtension {
     private trackPreparedModelOperation;
     waitForPreparedModelIdle(model: object): Promise<void>;
     loop(generation?: any): Promise<void>;
+    recognizeFrame(model: any, recognitionMode: RecognitionMode): Promise<{
+        keypoints: any;
+        prediction: any;
+    }>;
     currentPoseReporter(): any;
     scoreReporter(): number;
     poseScoreReporter(args: any): number;

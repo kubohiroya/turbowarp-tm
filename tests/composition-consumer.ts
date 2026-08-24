@@ -15,7 +15,7 @@ import {
   type PoseOverlayConfidenceScaling,
   type TMPoseComposition,
   type TMPoseCompositionRuntime
-} from '@kubohiroya/turbowarp-tmpose/composition';
+} from '@kubohiroya/turbowarp-tm/composition';
 
 declare const runtime: TMPoseCompositionRuntime;
 

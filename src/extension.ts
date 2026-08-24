@@ -16,20 +16,31 @@ import packageMetadata from '../package.json' with {type: 'json'};
 
 export const EXTENSION_ID = 'tmpose';
 export const VERSION = `${packageMetadata.version}-typescript`;
-export const DOCS_URI = 'https://kubohiroya.github.io/turbowarp-tmpose/';
+export const DOCS_URI = 'https://kubohiroya.github.io/turbowarp-tm/';
 export const ACCUMULATED_POSE_CHANGED_EVENT = 'TMPOSE_ACCUMULATED_POSE_CHANGED';
 export const BLOCK_ICON_URI = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8h13M43 8h13v13M8 43v13h13M43 56h13V43M32 25v15M20 31l12 5 12-5M32 40 23 52M32 40l9 12"/><circle cx="32" cy="18" r="5"/></g></svg>'
 )}`;
 
-export interface TMPoseRuntime {
+export type RecognitionMode = 'pose' | 'image' | 'audio';
+
+export interface TeachableMachineRuntime {
   Webcam: new (width: number, height: number, flipHorizontal: boolean) => any;
   load?(modelURL: string, metadataURL: string): Promise<any>;
   loadFromFiles?(model: File, weights: File, metadata: File): Promise<any>;
 }
 
+export interface TeachableMachineAudioRuntime {
+  load(modelURL: string, metadataURL: string): Promise<any>;
+}
+
+export type TMPoseRuntime = TeachableMachineRuntime;
+
 export interface TMPoseExtensionDependencies {
-  runtime?: TMPoseRuntime;
+  runtime?: TeachableMachineRuntime;
+  poseRuntime?: TeachableMachineRuntime;
+  imageRuntime?: TeachableMachineRuntime;
+  audioRuntime?: TeachableMachineAudioRuntime;
   allowRemoteLibraries?: boolean;
   onAccumulatedPoseChanged?: (event: AccumulatedPoseChangedEventV2) => void;
 }
@@ -44,7 +55,7 @@ export interface AccumulatedPoseChangedEventV2 {
 }
 
 export const BROWSER_RUNTIME_URL =
-  `https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tmpose@${packageMetadata.version}/dist/runtime.js`;
+  `https://cdn.jsdelivr.net/npm/${packageMetadata.name}@${packageMetadata.version}/dist/runtime.js`;
 
 const POSITION_ITEMS = [
   {text: 'top left', value: 'top-left'},
@@ -74,6 +85,38 @@ const PREVIEW_MIRRORING_ALIASES: Record<string, boolean> = {
   normal: false,
   '左右反転': true,
   'そのまま': false
+};
+
+const RECOGNITION_MODE_ITEMS: ReadonlyArray<{text: string; value: RecognitionMode}> = [
+  {text: 'pose', value: 'pose'},
+  {text: 'image', value: 'image'},
+  {text: 'audio', value: 'audio'}
+];
+
+const RECOGNITION_MODE_ALIASES: Record<string, RecognitionMode> = {
+  pose: 'pose',
+  poses: 'pose',
+  body: 'pose',
+  image: 'image',
+  images: 'image',
+  object: 'image',
+  card: 'image',
+  marker: 'image',
+  audio: 'audio',
+  sound: 'audio',
+  voice: 'audio',
+  microphone: 'audio',
+  mic: 'audio',
+  'ポーズ': 'pose',
+  '姿勢': 'pose',
+  '画像': 'image',
+  '物体': 'image',
+  'カード': 'image',
+  '記号': 'image',
+  '音声': 'audio',
+  '音': 'audio',
+  '声': 'audio',
+  'マイク': 'audio'
 };
 
 const POSE_OVERLAY_VISIBILITY_ITEMS = [
@@ -136,6 +179,10 @@ function normalizePreviewMirroring(value: unknown): boolean {
   return PREVIEW_MIRRORING_ALIASES[String(value ?? 'mirrored').trim().toLowerCase()] ?? true;
 }
 
+function normalizeRecognitionMode(value: unknown): RecognitionMode {
+  return RECOGNITION_MODE_ALIASES[String(value ?? 'pose').trim().toLowerCase()] ?? 'pose';
+}
+
 function normalizeCameraSelection(value: unknown): ResolvedCameraSelection {
   const selection = String(value ?? 'default').trim();
   const normalized = CAMERA_SELECTION_ALIASES[selection.toLowerCase() || 'default'];
@@ -169,7 +216,12 @@ function cameraConstraints(selection: ResolvedCameraSelection): MediaTrackConstr
 
 function scriptLoadedFor(src: string): boolean {
   if (src === BROWSER_RUNTIME_URL) {
-    return typeof globalThis.tf !== 'undefined' && typeof globalThis.tmPose !== 'undefined';
+    return (
+      typeof globalThis.tf !== 'undefined' &&
+      typeof globalThis.tmPose !== 'undefined' &&
+      typeof globalThis.tmImage !== 'undefined' &&
+      typeof globalThis.tmAudio !== 'undefined'
+    );
   }
   return false;
 }
@@ -262,9 +314,12 @@ export class TMPoseExtension {
     dependencies: TMPoseExtensionDependencies = {}
   ) {
     this.featureFlags = {...FEATURE_FLAGS, ...featureFlags};
-    this.tmPoseRuntime = dependencies.runtime ?? null;
+    this.tmPoseRuntime = dependencies.poseRuntime ?? dependencies.runtime ?? null;
+    this.tmImageRuntime = dependencies.imageRuntime ?? null;
+    this.tmAudioRuntime = dependencies.audioRuntime ?? null;
     this.allowRemoteLibraries = dependencies.allowRemoteLibraries ?? true;
     this.onAccumulatedPoseChanged = dependencies.onAccumulatedPoseChanged ?? null;
+    this.recognitionMode = 'pose';
     this.modelURL = '';
     this.model = null;
     this.webcam = null;
@@ -276,6 +331,7 @@ export class TMPoseExtension {
     this.activeCameraDeviceName = '';
     this.cameraSelectionQueue = Promise.resolve();
     this.recognizing = false;
+    this.audioListening = false;
     this.loopStarted = false;
     this.loopGeneration = 0;
     this.activeModelOperations = new Map();
@@ -351,6 +407,13 @@ export class TMPoseExtension {
           acceptReporters: true,
           items: PREVIEW_MIRRORING_ITEMS.map((item) => ({text: Scratch.translate(item.text), value: item.value}))
         },
+        recognitionModeMenu: {
+          acceptReporters: true,
+          items: RECOGNITION_MODE_ITEMS.map((item) => ({
+            text: Scratch.translate(item.text),
+            value: item.value
+          }))
+        },
         poseOverlayVisibilityMenu: {
           acceptReporters: true,
           items: POSE_OVERLAY_VISIBILITY_ITEMS.map((item) => ({
@@ -380,6 +443,31 @@ export class TMPoseExtension {
   versionReporter() { return VERSION; }
   setLastError(error) { this.lastError = String(error?.message ?? error); }
 
+  setRecognitionMode(args) {
+    const mode = normalizeRecognitionMode(args.MODE);
+    if (mode === this.recognitionMode) return;
+    if (this.recognizing) {
+      throw new Error('Teachable Machine: Stop recognition before changing recognition mode.');
+    }
+    if (this.cameraRunning) {
+      throw new Error('Teachable Machine: Stop the camera before changing recognition mode.');
+    }
+    this.recognitionMode = mode;
+    this.model = null;
+    this.modelURL = '';
+    this.modelLoadMs = 0;
+    this.firstRecognitionMs = 0;
+    this.currentPoseName = '';
+    this.score = 0;
+    this.predictions = {};
+    this.clearPoseOverlay();
+    this.resetAccumulatedPose();
+  }
+
+  recognitionModeReporter() {
+    return this.recognitionMode;
+  }
+
   setModelURL(args) {
     this.modelURL = String(args.URL || '').trim();
     if (this.modelURL && !this.modelURL.endsWith('/')) this.modelURL += '/';
@@ -388,18 +476,35 @@ export class TMPoseExtension {
     this.firstRecognitionMs = 0;
   }
 
+  activeRuntime(): TeachableMachineRuntime | TeachableMachineAudioRuntime | null {
+    if (this.recognitionMode === 'audio') return this.tmAudioRuntime;
+    return this.recognitionMode === 'image' ? this.tmImageRuntime : this.tmPoseRuntime;
+  }
+
   async ensureLibrariesLoaded() {
-    if (this.tmPoseRuntime) return;
+    if (this.activeRuntime()) return;
     if (!this.allowRemoteLibraries) {
-      throw new Error('TMPose: A preloaded Teachable Machine Pose runtime is required.');
+      throw new Error('Teachable Machine: A preloaded runtime is required.');
     }
-    if (typeof globalThis.tf === 'undefined' || typeof globalThis.tmPose === 'undefined') {
+    if (
+      typeof globalThis.tf === 'undefined' ||
+      typeof globalThis.tmPose === 'undefined' ||
+      typeof globalThis.tmImage === 'undefined' ||
+      typeof globalThis.tmAudio === 'undefined'
+    ) {
       await loadScript(BROWSER_RUNTIME_URL);
     }
-    if (typeof globalThis.tf === 'undefined' || typeof globalThis.tmPose === 'undefined') {
-      throw new Error('TMPose: The reviewed browser runtime could not be loaded.');
+    if (
+      typeof globalThis.tf === 'undefined' ||
+      typeof globalThis.tmPose === 'undefined' ||
+      typeof globalThis.tmImage === 'undefined' ||
+      typeof globalThis.tmAudio === 'undefined'
+    ) {
+      throw new Error('Teachable Machine: The reviewed browser runtime could not be loaded.');
     }
     this.tmPoseRuntime = globalThis.tmPose;
+    this.tmImageRuntime = globalThis.tmImage;
+    this.tmAudioRuntime = globalThis.tmAudio;
   }
 
   cleanupCameraResources() {
@@ -425,6 +530,9 @@ export class TMPoseExtension {
   }
 
   async startCamera() {
+    if (this.recognitionMode === 'audio') {
+      throw new Error('Teachable Machine: Audio mode uses the microphone through start recognition.');
+    }
     if (this.cameraRunning && this.webcam) {
       this.attachPreviewToStage();
       return;
@@ -433,7 +541,12 @@ export class TMPoseExtension {
       this.lastError = '';
       const startedAt = performance.now();
       await this.ensureLibrariesLoaded();
-      this.webcam = new this.tmPoseRuntime.Webcam(320, 240, true);
+      const runtime = this.activeRuntime();
+      if (!runtime) throw new Error('Teachable Machine: Runtime is unavailable.');
+      if (!('Webcam' in runtime)) {
+        throw new Error('Teachable Machine: Camera runtime is unavailable in the current mode.');
+      }
+      this.webcam = new runtime.Webcam(320, 240, true);
       const constraints = cameraConstraints(this.resolvedCameraSelection());
       if (constraints) await this.webcam.setup(constraints);
       else await this.webcam.setup();
@@ -690,15 +803,16 @@ export class TMPoseExtension {
 
   async loadModel() {
     if (this.model) return;
-    if (!this.modelURL) throw new Error('TMPose: Set the model URL first.');
+    if (!this.modelURL) throw new Error('Teachable Machine: Set the model URL first.');
     try {
       this.lastError = '';
       const startedAt = performance.now();
       await this.ensureLibrariesLoaded();
-      if (typeof this.tmPoseRuntime.load !== 'function') {
-        throw new Error('TMPose: The Teachable Machine Pose URL loader is not available.');
+      const runtime = this.activeRuntime();
+      if (!runtime || typeof runtime.load !== 'function') {
+        throw new Error('Teachable Machine: The URL loader is not available.');
       }
-      this.model = await this.tmPoseRuntime.load(
+      this.model = await runtime.load(
         this.modelURL + 'model.json',
         this.modelURL + 'metadata.json'
       );
@@ -737,13 +851,14 @@ export class TMPoseExtension {
     try {
       this.lastError = '';
       const startingNewSession = !this.recognizing;
-      if (!this.cameraRunning) await this.startCamera();
+      if (this.recognitionMode !== 'audio' && !this.cameraRunning) await this.startCamera();
       await this.loadModel();
       if (startingNewSession && this.featureFlags.temporalPoseScoring) {
         this.startAccumulatedPoseSession();
       }
       this.recognizing = true;
-      this.startLoopIfNeeded();
+      if (this.recognitionMode === 'audio') await this.startAudioRecognition();
+      else this.startLoopIfNeeded();
     } catch (error) {
       this.setLastError(error);
       throw error;
@@ -752,6 +867,7 @@ export class TMPoseExtension {
 
   stopRecognition() {
     this.recognizing = false;
+    this.stopAudioRecognition();
     this.currentPoseName = '';
     this.score = 0;
     this.predictions = {};
@@ -760,6 +876,68 @@ export class TMPoseExtension {
   }
 
   isRecognizing() { return this.recognizing; }
+
+  async startAudioRecognition() {
+    if (!this.model || typeof this.model.listen !== 'function') {
+      throw new Error('Teachable Machine: The active model does not support audio recognition.');
+    }
+    if (typeof this.model.isListening === 'function' && this.model.isListening()) {
+      this.audioListening = true;
+      return;
+    }
+    const first = this.firstRecognitionMs === 0;
+    const startedAt = first ? performance.now() : 0;
+    await this.model.listen(
+      async (result) => {
+        if (!this.recognizing || this.recognitionMode !== 'audio' || this.model === null) return;
+        if (first && this.firstRecognitionMs === 0) {
+          this.firstRecognitionMs = Math.round(performance.now() - startedAt);
+        }
+        this.applyPredictions(this.audioPredictionFromResult(this.model, result));
+      },
+      {
+        probabilityThreshold: 0,
+        overlapFactor: 0.5,
+        invokeCallbackOnNoiseAndUnknown: true
+      }
+    );
+    this.audioListening = true;
+  }
+
+  stopAudioRecognition() {
+    if (!this.audioListening || !this.model || typeof this.model.stopListening !== 'function') {
+      this.audioListening = false;
+      return;
+    }
+    this.audioListening = false;
+    void this.model.stopListening().catch((error) => this.setLastError(error));
+  }
+
+  audioPredictionFromResult(model, result) {
+    const labels = typeof model.wordLabels === 'function' ? model.wordLabels() : [];
+    const scores = Array.isArray(result?.scores) ? result.scores[0] : result?.scores;
+    if (!labels.length || !scores || typeof scores.length !== 'number') {
+      throw new Error('Teachable Machine: Audio recognition did not return labels and scores.');
+    }
+    return labels.map((className, index) => ({
+      className,
+      probability: Number(scores[index] ?? 0)
+    }));
+  }
+
+  applyPredictions(prediction) {
+    let best = {className: '', probability: 0};
+    this.predictions = {};
+    for (const result of prediction) {
+      this.predictions[result.className] = result.probability;
+      if (result.probability > best.probability) best = result;
+    }
+    this.currentPoseName = best.className;
+    this.score = best.probability;
+    if (this.featureFlags.temporalPoseScoring) {
+      this.updateAccumulatedPose(prediction);
+    }
+  }
 
   findStageElement() {
     try {
@@ -1109,37 +1287,25 @@ export class TMPoseExtension {
       this.webcam.update();
       if (this.recognizing && this.model) {
         const model = this.model;
+        const recognitionMode = this.recognitionMode;
         const first = this.firstRecognitionMs === 0;
         const startedAt = first ? performance.now() : 0;
         const recognition = await this.trackPreparedModelOperation(
           model,
-          (async () => {
-            const estimate = await model.estimatePose(this.webcam.canvas);
-            const prediction = await model.predict(estimate.posenetOutput);
-            return {keypoints: estimate.pose?.keypoints, prediction};
-          })()
+          this.recognizeFrame(model, recognitionMode)
         );
         if (
           generation !== this.loopGeneration ||
           !this.cameraRunning ||
           !this.recognizing ||
-          this.model !== model
+          this.model !== model ||
+          this.recognitionMode !== recognitionMode
         ) {
           // The old result is stale, but a still-running camera keeps its frame loop alive.
         } else {
           if (first) this.firstRecognitionMs = Math.round(performance.now() - startedAt);
           this.renderPoseOverlay(recognition.keypoints);
-          let best = {className: '', probability: 0};
-          this.predictions = {};
-          for (const result of recognition.prediction) {
-            this.predictions[result.className] = result.probability;
-            if (result.probability > best.probability) best = result;
-          }
-          this.currentPoseName = best.className;
-          this.score = best.probability;
-          if (this.featureFlags.temporalPoseScoring) {
-            this.updateAccumulatedPose(recognition.prediction);
-          }
+          this.applyPredictions(recognition.prediction);
         }
       }
     } catch (error) {
@@ -1150,6 +1316,20 @@ export class TMPoseExtension {
     } else if (generation === this.loopGeneration) {
       this.loopStarted = false;
     }
+  }
+
+  async recognizeFrame(model, recognitionMode: RecognitionMode) {
+    if (recognitionMode === 'pose') {
+      if (typeof model.estimatePose !== 'function') {
+        throw new Error('Teachable Machine: The active model does not support pose recognition.');
+      }
+      const estimate = await model.estimatePose(this.webcam.canvas);
+      const prediction = await model.predict(estimate.posenetOutput);
+      return {keypoints: estimate.pose?.keypoints, prediction};
+    }
+    const source = this.webcam.webcam ?? this.webcam.canvas;
+    const prediction = await model.predict(source);
+    return {keypoints: [], prediction};
   }
 
   currentPoseReporter() { return this.currentPoseName; }

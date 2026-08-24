@@ -1,6 +1,12 @@
 import {defineConfig} from 'vite';
+import {resolve} from 'node:path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      util: resolve('src/runtime-util-shim.ts')
+    }
+  },
   build: {
     emptyOutDir: false,
     lib: {

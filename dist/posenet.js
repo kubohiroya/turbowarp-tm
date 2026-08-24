@@ -1,5 +1,5 @@
-const name = "@kubohiroya/turbowarp-tmpose";
-const version = "1.12.0";
+const name = "@kubohiroya/turbowarp-tm";
+const version = "1.0.0";
 const packageMetadata = {
   name,
   version

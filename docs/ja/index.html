@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="TMPose TurboWarp拡張機能の図解付き利用者ガイド。Teachable Machine Poseモデルを接続し、ポーズを認識して結果を利用する方法を説明します。">
-  <title>TMPose 利用者ガイド</title>
-  <link rel="canonical" href="https://kubohiroya.github.io/turbowarp-tmpose/ja/">
-  <link rel="alternate" hreflang="en" href="https://kubohiroya.github.io/turbowarp-tmpose/">
-  <link rel="alternate" hreflang="ja" href="https://kubohiroya.github.io/turbowarp-tmpose/ja/">
-  <link rel="alternate" hreflang="x-default" href="https://kubohiroya.github.io/turbowarp-tmpose/">
+  <meta name="description" content="Teachable Machine TurboWarp拡張機能の図解付き利用者ガイド。Teachable Machine Pose、Image、Audioモデルを接続し、認識結果を利用する方法を説明します。">
+  <title>Teachable Machine 利用者ガイド</title>
+  <link rel="canonical" href="https://kubohiroya.github.io/turbowarp-tm/ja/">
+  <link rel="alternate" hreflang="en" href="https://kubohiroya.github.io/turbowarp-tm/">
+  <link rel="alternate" hreflang="ja" href="https://kubohiroya.github.io/turbowarp-tm/ja/">
+  <link rel="alternate" hreflang="x-default" href="https://kubohiroya.github.io/turbowarp-tm/">
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
   <a class="skip-link" href="#main">本文へ移動</a>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./" aria-label="TMPose 1.12.0日本語ガイドの先頭">
+      <a class="brand" href="./" aria-label="Teachable Machine 1.0.0日本語ガイドの先頭">
         <span class="brand-mark">TM</span>
-        <span class="brand-label">TMPose</span>
-        <span class="version-badge" aria-hidden="true">v1.12.0</span>
+        <span class="brand-label">Teachable Machine</span>
+        <span class="version-badge" aria-hidden="true">v1.0.0</span>
       </a>
       <nav class="primary-nav" aria-label="ガイドの章">
         <a href="#quick-start">クイックスタート</a>
@@ -27,7 +27,7 @@
         <a href="#composition-hosts">Composition API</a>
         <a href="#block-guide">ブロック</a>
       </nav>
-      <a class="github-link" href="https://github.com/kubohiroya/turbowarp-tmpose" aria-label="GitHubでソースを見る" title="GitHubでソースを見る">
+      <a class="github-link" href="https://github.com/kubohiroya/turbowarp-tm" aria-label="GitHubでソースを見る" title="GitHubでソースを見る">
         <svg class="github-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
         </svg>
@@ -45,7 +45,7 @@
       <div>
         <p class="eyebrow">TurboWarp 拡張機能 · 利用者ガイド</p>
         <h1 id="hero-title">体の動きを<span>プロジェクトの入力</span>に。</h1>
-        <p class="lede">TMPose は Teachable Machine Pose モデルを TurboWarp に接続します。カメラ映像がポーズごとの確率になり、ラベル、スコア、真偽値としてスクリプトから利用できます。</p>
+        <p class="lede">この拡張機能は Teachable Machine Pose、Image、Audioモデルを TurboWarp に接続します。カメラ映像またはマイク音声がラベルごとの確率になり、ラベル、スコア、真偽値としてスクリプトから利用できます。</p>
         <div class="hero-actions">
           <a class="button primary" href="#quick-start">最初のスクリプトを作る</a>
         </div>
@@ -76,9 +76,9 @@
             </svg>
           </div>
         </div>
-        <div class="data-arrow">映像<br>↓<br>ポーズ確率</div>
+        <div class="data-arrow">映像<br>↓<br>ラベル確率</div>
         <div class="result-card">
-          <div class="result-label">現在のポーズ</div>
+          <div class="result-label">現在のラベル</div>
           <div class="result-value"><span>jump</span><small>0.91</small></div>
           <div class="meter" aria-label="信頼度0.91"><span></span></div>
         </div>
@@ -89,14 +89,14 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">紙芝居DSL 4.0集約ランタイム</p>
-          <h2 id="dsl4-bundle-title">集約パレットからTMPoseのマニュアルを開けます</h2>
+          <h2 id="dsl4-bundle-title">集約パレットからTeachable Machineのマニュアルを開けます</h2>
         </div>
         <p>
-          <strong>TMPose</strong>見出し直下のドキュメントボタンを押します。集約されたブロックも、
+          <strong>Teachable Machine</strong>見出し直下のドキュメントボタンを押します。集約されたブロックも、
           ここで説明するモデルURL、認識、プレビュー、ラベル、スコア、しきい値、ライフサイクルの
-          動作を保ちます。1.12.0では公開ライフサイクルopcodeを<code>startRecognition</code>、
+          動作を保ちます。TurboWarp TM 1.0.0のパッケージ系列では公開ライフサイクルopcodeを<code>startRecognition</code>、
           <code>stopRecognition</code>、<code>isRecognizing</code>へ統一し、旧名は残していません。
-          1.11.0では設定可能なSVGポーズオーバーレイブロックを追加しました。
+          設定可能なSVGポーズオーバーレイブロックはポーズモードで引き続き利用でき、画像モードではキーポイントなしでラベルスコアを扱います。
           latest-neededモデル初期化とキャンセル制御は引き続きhost向けAPIとしてComposition APIの章で説明します。
         </p>
       </div>
@@ -108,14 +108,14 @@
           <p class="eyebrow">クイックスタート</p>
           <h2 id="quick-start-title">モデルから動きまで、4ステップ</h2>
         </div>
-        <p>公開済みの Teachable Machine Pose モデル、カメラ、ネットワーク接続が必要です。TMPose をカスタム拡張機能として読み込み、<strong>サンドボックス化せずに拡張機能を実行する</strong>を有効にしてから、次の順番でブロックを置きます。</p>
+        <p>公開済みの Teachable Machine Pose、Image、Audioモデル、対応するカメラまたはマイク権限、ネットワーク接続が必要です。この拡張機能をカスタム拡張機能として読み込み、<strong>サンドボックス化せずに拡張機能を実行する</strong>を有効にしてから、次の順番でブロックを置きます。</p>
       </div>
 
       <div class="flow" aria-label="4ステップの準備手順">
         <article class="flow-step">
           <span class="step-number">1</span>
           <h3>学習して公開する</h3>
-          <p>Teachable Machine で各ポーズに <code>jump</code> や <code>stand</code> などのわかりやすいクラス名を付けます。モデルをエクスポートし、共有 URL をコピーします。</p>
+          <p>Teachable Machine で各クラスに <code>jump</code>、<code>card</code>、<code>clap</code> などのわかりやすい名前を付けます。モデルをエクスポートし、共有 URL をコピーします。</p>
         </article>
         <article class="flow-step">
           <span class="step-number">2</span>
@@ -125,12 +125,12 @@
         <article class="flow-step">
           <span class="step-number">3</span>
           <h3>認識を開始する</h3>
-          <p>カメラの利用を許可します。必要なら TMPose がカメラを起動し、モデルも自動で読み込みます。</p>
+          <p>カメラまたはマイクの利用を許可します。必要なら拡張機能が必要な入力を起動し、モデルも自動で読み込みます。</p>
         </article>
         <article class="flow-step">
           <span class="step-number">4</span>
           <h3>結果を使う</h3>
-          <p>最上位のラベルを読む、特定のポーズを判定する、信頼度でプロジェクトを制御する、といった使い方ができます。</p>
+          <p>最上位のラベルを読む、特定のクラスを判定する、信頼度でプロジェクトを制御する、といった使い方ができます。</p>
         </article>
       </div>
 
@@ -139,12 +139,12 @@
         <div class="block"><span>set model URL to</span><span class="block-value">https://teachablemachine.withgoogle.com/models/…/</span></div>
         <div class="block"><span>start recognition</span></div>
         <div class="block control"><span>ずっと</span></div>
-        <div class="block sensing"><span>if pose is jump with confidence at least</span><span class="block-value">0.75</span></div>
+        <div class="block sensing"><span>if label is jump with confidence at least</span><span class="block-value">0.75</span></div>
       </div>
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">!</span>
-        <p><strong>サンドボックス化せずに読み込んでください。</strong>カメラ利用とステージ内プレビューには、TurboWarp の「サンドボックス化せずに拡張機能を実行する」が必要です。信頼できる拡張機能のコードだけを読み込んでください。</p>
+        <p><strong>サンドボックス化せずに読み込んでください。</strong>カメラまたはマイク利用とステージ内プレビューには、TurboWarp の「サンドボックス化せずに拡張機能を実行する」が必要です。信頼できる拡張機能のコードだけを読み込んでください。</p>
       </aside>
     </section>
 
@@ -152,9 +152,9 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">動作のしくみ</p>
-          <h2 id="how-it-works-title">1枚の映像から、複数の答えへ</h2>
+          <h2 id="how-it-works-title">1つの入力から、複数の答えへ</h2>
         </div>
-        <p>認識中、TMPose はカメラ映像を繰り返し取得し、ブラウザー内でモデルを実行します。そして、モデルに含まれるすべてのクラスについて確率を保存します。</p>
+        <p>認識中、この拡張機能は選択したカメラまたはマイク入力を繰り返し取得し、ブラウザー内でモデルを実行します。そして、モデルに含まれるすべてのクラスについて確率を保存します。</p>
       </div>
 
       <figure>
@@ -169,7 +169,7 @@
         </div>
         <figcaption class="note">
           <span class="note-icon" aria-hidden="true">i</span>
-          <p><code>current pose</code> は確率が最も高いクラスです。<code>confidence</code> はそのクラスのスコアを小数第2位に丸めた値です。<code>confidence of [NAME]</code> は指定したクラスの値を返します。</p>
+          <p><code>current label</code> は確率が最も高いクラスです。<code>confidence</code> はそのクラスのスコアを小数第2位に丸めた値です。<code>confidence of [NAME]</code> は指定したクラスの値を返します。</p>
         </figcaption>
       </figure>
 
@@ -178,7 +178,7 @@
           <h3>プレビューはステージ上に表示</h3>
           <p>カメラのキャンバスを TurboWarp のステージ上に重ねて表示します。スプライトにはなりません。また、非表示にしてもモデルへの入力は変わりません。既定は左右反転表示です。カメラの動作中でも <code>mirrored</code> と <code>unmirrored</code> を切り替えられ、認識入力の向きは変わりません。</p>
           <p>1.11.0では、認識したPoseNetの17関節と標準12ボーンを既定でSVG表示します。表示、関節ごとの色・透明度・半径、ボーン共通の色・透明度・太さ、最小信頼度、各表示属性の信頼度連動をブロックで設定できます。</p>
-          <p>TMPoseは、所有するカメラCanvasに通常のCanvas2D contextを使います。物理カメラによる320×240の「1回描画・1回readback」測定では、<code>willReadFrequently</code>によるend-to-endの性能向上を再現できませんでした。このhintは「1回描画・4回以上readback」という別のread-heavy条件では改善しましたが、video描画を遅くする場合があります。そのためCPU推論時にChromeのCanvas2D readback警告が表示されることがあります。他のTurboWarp Canvasは変更せず、host側の全体Canvas patchやConsole patchも不要です。</p>
+          <p>この拡張機能は、所有するカメラCanvasに通常のCanvas2D contextを使います。物理カメラによる320x240の「1回描画・1回readback」測定では、<code>willReadFrequently</code>によるend-to-endの性能向上を再現できませんでした。このhintは「1回描画・4回以上readback」という別のread-heavy条件では改善しましたが、video描画を遅くする場合があります。そのためCPU推論時にChromeのCanvas2D readback警告が表示されることがあります。他のTurboWarp Canvasは変更せず、host側の全体Canvas patchやConsole patchも不要です。</p>
           <div class="mini-stage" aria-label="ステージの右下にあるプレビュー"><span class="preview-window">カメラ</span></div>
           <div class="position-list" aria-label="プレビューを置ける位置">
             <span>左上</span><span>右上</span><span>左下</span><span>右下</span><span>中央</span><span>ステージ全体</span>
@@ -188,8 +188,8 @@
           <h3>開始と停止を使い分ける</h3>
           <ul class="checklist">
             <li><code>start camera</code> はカメラを起動してプレビューを表示します。</li>
-            <li><code>start recognition</code> は、必要ならカメラ起動とモデル読込も行います。</li>
-            <li><code>stop recognition</code> は認識結果を消しますが、カメラはそのまま利用できます。</li>
+            <li><code>start recognition</code> は、必要なら入力起動とモデル読込も行います。</li>
+            <li><code>stop recognition</code> は認識結果を消して音声リスニングを止めますが、カメラはそのまま利用できます。</li>
             <li><code>stop camera</code> は認識を止め、メディアトラックを解放し、プレビューも取り除きます。</li>
             <li><code>hide camera preview</code> は表示だけを変えます。認識は続けられます。</li>
           </ul>
@@ -203,7 +203,7 @@
           <p class="eyebrow">Composition host</p>
           <h2 id="composition-hosts-title">物語でまだ必要なモデルだけを準備</h2>
         </div>
-        <p>TMPose 1.11.0では、application hostが不要になったモデル要求をキャンセルしても、カメラ起動は独立して継続できます。最初の推論は、カメラと登録済みモデルの両方を待ちます。</p>
+        <p>Composition APIでは、application hostが不要になったモデル要求をキャンセルしても、カメラ起動は独立して継続できます。最初の推論は、入力と登録済みモデルの両方を待ちます。</p>
       </div>
 
       <div class="split-grid">
@@ -233,7 +233,7 @@
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">i</span>
-        <p><strong>安全な既定値:</strong> <code>modelInitializationPolicy</code>は<code>legacy</code>、<code>parallelModelInitialization</code>は<code>false</code>が既定です。TensorFlow.jsとWeb Cryptoは進行中のすべての処理を物理的に中断できないため、TMPoseは後続phaseを止め、遅延して完了したresourceをexactly-onceで解放します。モデルのcancelだけでカメラを停止しません。</p>
+        <p><strong>安全な既定値:</strong> <code>modelInitializationPolicy</code>は<code>legacy</code>、<code>parallelModelInitialization</code>は<code>false</code>が既定です。TensorFlow.jsとWeb Cryptoは進行中のすべての処理を物理的に中断できないため、Composition APIは後続phaseを止め、遅延して完了したresourceをexactly-onceで解放します。モデルのcancelだけでカメラを停止しません。</p>
       </aside>
     </section>
 
@@ -258,7 +258,7 @@
             <polyline class="chart-current" points="30,143 68,128 106,66 144,94 182,51 220,90 258,55 296,62 334,47 372,57 400,42"/>
           </svg>
           <div class="legend"><span style="--legend-color: var(--coral)">フレームごとの信頼度</span><span style="--legend-color: var(--gold)">しきい値</span></div>
-          <p style="margin-top: 18px"><code>pose is [NAME] with confidence at least [THRESHOLD]?</code> を使います。しきい値は 0〜1 の範囲に収まり、<code>0.75</code> が試しやすい初期値です。</p>
+          <p style="margin-top: 18px"><code>label is [NAME] with confidence at least [THRESHOLD]?</code> を使います。しきい値は 0〜1 の範囲に収まり、<code>0.75</code> が試しやすい初期値です。</p>
         </article>
 
         <article class="score-card accumulated">
@@ -295,7 +295,7 @@
             <li><code>set model URL to [URL]</code> はモデルを切り替え、以前読み込んだモデルを解除します。</li>
             <li><code>load model</code> は <code>model.json</code> と <code>metadata.json</code> を取得します。</li>
             <li><code>model is loaded?</code> は準備できているかを返します。</li>
-            <li><code>TMPose version</code> は拡張機能のビルド情報を返します。</li>
+            <li><code>Teachable Machine version</code> は拡張機能のビルド情報を返します。</li>
           </ul>
         </article>
         <article class="reference-card">
@@ -325,9 +325,9 @@
           <p>認識ループを開始し、スコアを読んで条件を判定します。</p>
           <ul>
             <li><code>start recognition</code> · <code>stop recognition</code> · <code>recognition is running?</code></li>
-            <li><code>current pose</code> · <code>confidence</code> · <code>confidence of [NAME]</code></li>
-            <li><code>pose is [NAME]?</code> のしきい値は 0.75 固定です。</li>
-            <li><code>pose is [NAME] with confidence at least [THRESHOLD]?</code></li>
+            <li><code>current label</code> · <code>confidence</code> · <code>confidence of [NAME]</code></li>
+            <li><code>label is [NAME]?</code> のしきい値は 0.75 固定です。</li>
+            <li><code>label is [NAME] with confidence at least [THRESHOLD]?</code></li>
           </ul>
         </article>
         <article class="reference-card">
@@ -363,7 +363,7 @@
         </details>
         <details>
           <summary>モデルを読み込めない</summary>
-          <p>Teachable Machine の編集画面や個別の JSON ファイルではなく、公開したモデルフォルダーの URL を使います。TMPose はその URL に <code>model.json</code> と <code>metadata.json</code> を追加します。jsDelivr と Teachable Machine のモデル配信先への通信が許可されていることも確認してください。</p>
+          <p>Teachable Machine の編集画面や個別の JSON ファイルではなく、公開したモデルフォルダーの URL を使います。この拡張機能はその URL に <code>model.json</code> と <code>metadata.json</code> を追加します。jsDelivr と Teachable Machine のモデル配信先への通信が許可されていることも確認してください。</p>
         </details>
         <details>
           <summary>ポーズ名が安定しない</summary>
@@ -377,15 +377,15 @@
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">🔒</span>
-        <p><strong>カメラとプライバシー：</strong>TMPose はブラウザー内で姿勢推定と分類を行い、カメラ映像をアップロードしません。一方で、TensorFlow.js、Teachable Machine Pose ライブラリ、公開済みモデルはネットワークから取得します。プロジェクトで不要になったらカメラを停止してください。</p>
+        <p><strong>入力とプライバシー：</strong>Teachable Machine はブラウザー内でポーズ、画像、音声の分類を行い、カメラ映像やマイク音声をアップロードしません。一方で、TensorFlow.js、Teachable Machine Pose/Imageライブラリ、Speech Commands、公開済みモデルはネットワークから取得します。プロジェクトで不要になったら認識とカメラを停止してください。</p>
       </aside>
     </section>
   </main>
 
   <footer>
     <div class="footer-inner">
-      <p><strong>TMPose</strong> · TurboWarp + Teachable Machine Pose</p>
-      <p><a href="https://github.com/kubohiroya/turbowarp-tmpose/issues">問題を報告</a> · <a href="../" lang="en" hreflang="en">English version</a></p>
+      <p><strong>Teachable Machine</strong> · TurboWarp + Teachable Machine</p>
+      <p><a href="https://github.com/kubohiroya/turbowarp-tm/issues">問題を報告</a> · <a href="../" lang="en" hreflang="en">English version</a></p>
     </div>
   </footer>
 </body>

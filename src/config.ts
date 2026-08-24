@@ -1,8 +1,8 @@
 export const extensionConfig = {
   id: 'tmpose',
-  slug: 'tmpose',
-  name: 'TMPose',
-  description: 'Use Teachable Machine Pose models for camera-based pose recognition in TurboWarp.',
+  slug: 'tm',
+  name: 'Teachable Machine',
+  description: 'Use Teachable Machine pose, image, or audio models for recognition in TurboWarp.',
   author: 'Hiroya Kubo',
   license: 'MPL-2.0',
   unsandboxed: true

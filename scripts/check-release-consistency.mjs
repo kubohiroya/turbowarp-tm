@@ -4,7 +4,8 @@ import process from 'node:process';
 
 const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
 const version = packageMetadata.version;
-const pinnedPackage = `@kubohiroya/turbowarp-tmpose@${version}`;
+const pinnedPackage = `${packageMetadata.name}@${version}`;
+const docsBrandName = 'Teachable Machine';
 const errors = [];
 
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
@@ -18,12 +19,15 @@ if (readme.split(pinnedPackage).length - 1 < 2) {
 
 for (const path of ['docs/index.html', 'docs/ja/index.html']) {
   const source = await readFile(path, 'utf8');
-  if (source.split(`v${version}`).length - 1 !== 1 || !source.includes(`TMPose ${version}`)) {
+  if (
+    source.split(`v${version}`).length - 1 !== 1 ||
+    !source.includes(`${docsBrandName} ${version}`)
+  ) {
     errors.push(`${path} must expose version ${version} in the badge and accessible brand label`);
   }
 }
 
-for (const path of ['dist/tmpose.js', 'dist/composition.js']) {
+for (const path of ['dist/tm.js', 'dist/composition.js']) {
   const source = await readFile(path, 'utf8');
   if (!source.includes(`version = "${version}"`)) {
     errors.push(`${path} must embed package version ${version}`);
@@ -39,6 +43,7 @@ if (!browserRuntime.includes(`version:"${version}"`)) {
 }
 if (
   !browserRuntime.startsWith('/*! @license Includes TensorFlow.js 1.3.1') ||
+  !browserRuntime.includes('Speech Commands 0.4.0') ||
   !browserRuntime.includes('PoseNet 2.2.2') ||
   !browserRuntime.includes(`/blob/v${version}/THIRD_PARTY_NOTICES.md`)
 ) {

@@ -144,7 +144,7 @@ describe('TMPoseExtension', () => {
     };
     expect(info.id).toBe('tmpose');
     expect(info.docsURI).toBe(DOCS_URI);
-    expect(info.docsURI).toBe('https://kubohiroya.github.io/turbowarp-tmpose/');
+    expect(info.docsURI).toBe('https://kubohiroya.github.io/turbowarp-tm/');
     expect(info.blockIconURI).toBe(BLOCK_ICON_URI);
     const iconSvg = decodeURIComponent(BLOCK_ICON_URI.slice('data:image/svg+xml,'.length));
     expect(iconSvg).toContain('viewBox="0 0 64 64"');
@@ -152,9 +152,11 @@ describe('TMPoseExtension', () => {
     expect(iconSvg).not.toContain('<rect');
     expect(new TMPoseExtension().versionReporter()).toBe(VERSION);
     expect(VERSION).toBe(`${packageMetadata.version}-typescript`);
-    expect(info.blocks).toHaveLength(37);
+    expect(info.blocks).toHaveLength(39);
     const opcodes = info.blocks.map((block) => block.opcode);
     expect(opcodes).toEqual(expect.arrayContaining([
+      'setRecognitionMode',
+      'recognitionModeReporter',
       'startRecognition',
       'stopRecognition',
       'isRecognizing',
@@ -181,7 +183,7 @@ describe('TMPoseExtension', () => {
     }).getInfo() as {
       blocks: Array<{opcode: string}>;
     };
-    expect(info.blocks).toHaveLength(37);
+    expect(info.blocks).toHaveLength(39);
     expect(info.blocks.map((block) => block.opcode)).toEqual(expect.arrayContaining([
       'setAccumulatedPoseParameters',
       'setAccumulatedPoseThreshold',
@@ -204,9 +206,9 @@ describe('TMPoseExtension', () => {
       };
     };
 
-    expect(disabled.blocks).toHaveLength(31);
+    expect(disabled.blocks).toHaveLength(33);
     expect(disabled.blocks.map((block) => block.opcode)).not.toContain('setPoseJointStyle');
-    expect(enabled.blocks).toHaveLength(37);
+    expect(enabled.blocks).toHaveLength(39);
     expect(enabled.blocks.map((block) => block.opcode)).toEqual(expect.arrayContaining([
       'setPoseOverlayVisibility',
       'isPoseOverlayVisible',
@@ -474,6 +476,83 @@ describe('TMPoseExtension', () => {
     expect(extension.modelURL).toBe('https://example.com/model/');
   });
 
+  it('switches between pose, image, and audio recognition modes before input startup', () => {
+    const extension = new TMPoseExtension();
+
+    extension.setRecognitionMode({MODE: 'card'});
+    expect(extension.recognitionModeReporter()).toBe('image');
+    extension.setRecognitionMode({MODE: 'マイク'});
+    expect(extension.recognitionModeReporter()).toBe('audio');
+    extension.model = {};
+    extension.modelURL = 'https://example.com/model/';
+    extension.currentPoseName = 'card';
+    extension.score = 0.9;
+    extension.predictions = {card: 0.9};
+
+    extension.setRecognitionMode({MODE: 'ポーズ'});
+    expect(extension.recognitionModeReporter()).toBe('pose');
+    expect(extension.model).toBeNull();
+    expect(extension.modelURL).toBe('');
+    expect(extension.currentPoseReporter()).toBe('');
+    expect(extension.scoreReporter()).toBe(0);
+    expect(extension.poseScoreReporter({NAME: 'card'})).toBe(0);
+  });
+
+  it('requires recognition to stop before changing mode', () => {
+    const extension = new TMPoseExtension();
+    extension.recognizing = true;
+
+    expect(() => extension.setRecognitionMode({MODE: 'image'})).toThrow(
+      'Stop recognition before changing recognition mode'
+    );
+  });
+
+  it('starts audio recognition without starting the camera', async () => {
+    let callback: ((result: {scores: Float32Array}) => Promise<void>) | null = null;
+    const listen = vi.fn(async (nextCallback) => {
+      callback = nextCallback;
+    });
+    const model = {
+      listen,
+      stopListening: vi.fn(async () => {}),
+      isListening: vi.fn(() => false),
+      wordLabels: vi.fn(() => ['noise', 'clap'])
+    };
+    const audioRuntime = {
+      load: vi.fn(async () => model)
+    };
+    const extension = new TMPoseExtension({}, {audioRuntime});
+    const startCamera = vi.spyOn(extension, 'startCamera');
+
+    extension.setRecognitionMode({MODE: 'audio'});
+    extension.setModelURL({URL: 'https://example.com/audio-model/'});
+    await extension.startRecognition();
+
+    expect(startCamera).not.toHaveBeenCalled();
+    expect(audioRuntime.load).toHaveBeenCalledWith(
+      'https://example.com/audio-model/model.json',
+      'https://example.com/audio-model/metadata.json'
+    );
+    expect(listen).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({
+      probabilityThreshold: 0
+    }));
+
+    await callback?.({scores: new Float32Array([0.2, 0.8])});
+    expect(extension.currentPoseReporter()).toBe('clap');
+    expect(extension.scoreReporter()).toBe(0.8);
+    expect(extension.poseScoreReporter({NAME: 'noise'})).toBe(0.2);
+
+    extension.stopRecognition();
+    expect(model.stopListening).toHaveBeenCalled();
+  });
+
+  it('rejects camera startup in audio mode', async () => {
+    const extension = new TMPoseExtension();
+    extension.setRecognitionMode({MODE: 'audio'});
+
+    await expect(extension.startCamera()).rejects.toThrow('Audio mode uses the microphone');
+  });
+
   it('finds the Desktop Editor stage wrapper directly', () => {
     const stage = createElement();
     querySelector.mockReturnValueOnce(stage);
@@ -713,6 +792,8 @@ describe('TMPoseExtension', () => {
     }
     vi.stubGlobal('tf', {});
     vi.stubGlobal('tmPose', {Webcam});
+    vi.stubGlobal('tmImage', {Webcam});
+    vi.stubGlobal('tmAudio', {});
 
     const extension = new TMPoseExtension();
     vi.spyOn(extension, 'attachPreviewToStage').mockImplementation(() => {
@@ -954,23 +1035,55 @@ describe('TMPoseExtension', () => {
   it('does not append scripts when required globals are already loaded', async () => {
     vi.stubGlobal('tf', {});
     vi.stubGlobal('tmPose', {});
+    vi.stubGlobal('tmImage', {});
+    vi.stubGlobal('tmAudio', {});
     await new TMPoseExtension().ensureLibrariesLoaded();
     expect((document.head.appendChild as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
   });
 
-  it('loads one reviewed browser runtime when TensorFlow and TM Pose are absent', async () => {
+  it('loads one reviewed browser runtime when TensorFlow and Teachable Machine globals are absent', async () => {
     const pending = new TMPoseExtension().ensureLibrariesLoaded();
     expect(document.head.appendChild).toHaveBeenCalledOnce();
     expect(scripts).toHaveLength(1);
     expect(scripts[0].src).toBe(BROWSER_RUNTIME_URL);
     vi.stubGlobal('tf', {version: '1.3.1'});
     vi.stubGlobal('tmPose', {Webcam: class {}});
+    vi.stubGlobal('tmImage', {Webcam: class {}});
+    vi.stubGlobal('tmAudio', {});
     const loadHandler = scripts[0].addEventListener.mock.calls.find(
       ([eventName]: [string]) => eventName === 'load'
     )?.[1];
     expect(loadHandler).toBeTypeOf('function');
     loadHandler();
     await expect(pending).resolves.toBeUndefined();
+  });
+
+  it('predicts image-mode labels from the camera frame without pose estimation', async () => {
+    const extension = new TMPoseExtension();
+    const canvas = createElement('CANVAS');
+    const video = createElement('VIDEO');
+    const model = {
+      estimatePose: vi.fn(),
+      predict: vi.fn(async (source: unknown) => {
+        expect(source).toBe(video);
+        return [
+          {className: 'card', probability: 0.8},
+          {className: 'empty', probability: 0.2}
+        ];
+      })
+    };
+    extension.webcam = {canvas, webcam: video};
+
+    const recognition = await extension.recognizeFrame(model, 'image');
+
+    expect(model.estimatePose).not.toHaveBeenCalled();
+    expect(recognition).toEqual({
+      keypoints: [],
+      prediction: [
+        {className: 'card', probability: 0.8},
+        {className: 'empty', probability: 0.2}
+      ]
+    });
   });
 
   it('invalidates an old asynchronous loop generation on camera cleanup', () => {

@@ -29,7 +29,7 @@ try {
     stdio: 'pipe'
   });
   for (const output of [
-    'dist/tmpose.js',
+    'dist/tm.js',
     'dist/composition.js',
     'dist/runtime.js',
     'dist/posenet.js',

@@ -1,75 +1,82 @@
-# TurboWarp TMPose
+# TurboWarp TM
 
-Use a [Teachable Machine Pose](https://teachablemachine.withgoogle.com/train/pose) model as a
-camera-based input for TurboWarp projects. TMPose turns each camera frame into pose labels,
+Use a [Teachable Machine](https://teachablemachine.withgoogle.com/) pose, image, or audio model as
+an input for TurboWarp projects. The extension turns each camera frame or microphone window into labels,
 confidence scores, and Boolean conditions that Scratch-style scripts can use.
 
-**[Open the illustrated user guide (English)](https://kubohiroya.github.io/turbowarp-tmpose/)** ·
-**[日本語ガイド](https://kubohiroya.github.io/turbowarp-tmpose/ja/)** ·
+TurboWarp TM is the renamed package line for the former TurboWarp TMPose extension. The Scratch
+extension ID remains `tmpose` for project compatibility, while the package, repository, Pages URL,
+and browser build now use `turbowarp-tm`.
+
+**[Open the illustrated user guide (English)](https://kubohiroya.github.io/turbowarp-tm/)** ·
+**[日本語ガイド](https://kubohiroya.github.io/turbowarp-tm/ja/)** ·
 [Block reference](#blocks)
 
-## What TMPose does
+## What The Extension Does
 
 ```mermaid
 flowchart LR
-    Camera["Camera frame"] --> Estimate["Pose estimation"]
-    Estimate --> Model["Teachable Machine model"]
+    Input["Camera frame or microphone audio"] --> Mode["Pose, image, or audio mode"]
+    Mode --> Model["Teachable Machine model"]
     Model --> Scores["Class probabilities"]
     Scores --> Blocks["TurboWarp blocks"]
 ```
 
-- loads a published Teachable Machine Pose model;
+- loads a published Teachable Machine Pose, Image, or Audio model;
+- switches recognition mode between `pose`, `image`, and `audio` before input startup;
 - starts and stops the camera independently from recognition;
 - places a configurable camera preview over the TurboWarp stage;
-- optionally overlays configurable SVG pose joints and bones on that preview;
-- reports the best pose, its confidence, and the confidence of any named pose;
-- tests poses with a fixed or custom confidence threshold;
+- optionally overlays configurable SVG pose joints and bones on that preview in pose mode;
+- reports the best label, its confidence, and the confidence of any named label;
+- tests labels with a fixed or custom confidence threshold;
 - optionally smooths decisions with time-decayed accumulated scores;
 - reports startup timings and explicit runtime errors.
 
-The [illustrated guide](https://kubohiroya.github.io/turbowarp-tmpose/) explains the complete flow,
+The [illustrated guide](https://kubohiroya.github.io/turbowarp-tm/) explains the complete flow,
 preview layout, score behavior, privacy, and troubleshooting. English is the default; the
-[Japanese version](https://kubohiroya.github.io/turbowarp-tmpose/ja/) has the same content.
+[Japanese version](https://kubohiroya.github.io/turbowarp-tm/ja/) has the same content.
 
 ## Requirements
 
-- a published Teachable Machine Pose model URL;
-- a camera and permission to use it in the browser;
-- network access for the reviewed TMPose browser runtime and the model files;
+- a published Teachable Machine Pose, Image, or Audio model URL;
+- a camera or microphone and permission to use it in the browser;
+- network access for the reviewed Teachable Machine browser runtime and the model files;
 - TurboWarp's **Run extension without sandbox** option.
 
 > [!IMPORTANT]
-> TMPose is an unsandboxed extension because it needs camera and stage access. Only load extension
+> This is an unsandboxed extension because it needs camera, microphone, and stage access. Only load extension
 > code you trust. Camera APIs also require a secure browser context such as HTTPS or localhost.
 
 ## Installation
 
-Download [`dist/tmpose.js`](dist/tmpose.js), then load it from TurboWarp's custom extension dialog
+Download [`dist/tm.js`](dist/tm.js), then load it from TurboWarp's custom extension dialog
 with **Run extension without sandbox** enabled.
 
 The browser-ready, version-pinned build is also available from jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tmpose@1.12.0/dist/tmpose.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@1.0.0/dist/tm.js
 ```
 
 The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 1.3.1
-module graph together with Teachable Machine Pose 0.8.3. Composite runtimes can load or embed the
-same artifact without rewriting a minified third-party bundle:
+module graph together with Teachable Machine Pose 0.8.3, Teachable Machine Image 0.8.5, and
+TensorFlow.js Speech Commands 0.4.0.
+Composite runtimes can load or embed the same artifact without rewriting a minified third-party
+bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tmpose@1.12.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@1.0.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tmpose@1.12.0
+pnpm add --save-exact @kubohiroya/turbowarp-tm@1.0.0
 ```
 
 ### Offline PoseNet bundle API
 
-`@kubohiroya/turbowarp-tmpose/posenet` owns the fixed PoseNet MobileNetV1 0.75 / stride 16
+`@kubohiroya/turbowarp-tm/posenet` owns the fixed PoseNet MobileNetV1 0.75 / stride 16
 manifest, package asset specifiers, SHA-256 verification, bounded Base64 project descriptor, and
 the Teachable Machine Pose fetch adapter. Host applications only decide where that explicit model
 descriptor is stored. The model stays as one JSON file and two binary shards; it is never disguised
@@ -80,7 +87,7 @@ import {readFile} from 'node:fs/promises';
 import {
   createBundledTMPoseRuntime,
   createPoseNetProjectBundleFromLoader,
-} from '@kubohiroya/turbowarp-tmpose/posenet';
+} from '@kubohiroya/turbowarp-tm/posenet';
 
 const projectBundle = await createPoseNetProjectBundleFromLoader((file) =>
   readFile(new URL(import.meta.resolve(file.packageSpecifier))),
@@ -102,13 +109,13 @@ requests fail closed with `TMPOSE-POSENET-*` error codes.
 
 ### Composition API
 
-Composite runtimes can import `@kubohiroya/turbowarp-tmpose/composition` without registering the
+Composite runtimes can import `@kubohiroya/turbowarp-tm/composition` without registering the
 Standalone extension or adding blocks. The caller supplies an already-bundled Teachable Machine
 Pose runtime and validated model bytes, so this path does not download runtime scripts or model
 files.
 
 ```js
-import {createTMPoseComposition} from '@kubohiroya/turbowarp-tmpose/composition';
+import {createTMPoseComposition} from '@kubohiroya/turbowarp-tm/composition';
 
 const pose = createTMPoseComposition({
   runtime: bundledTMPoseRuntime,
@@ -164,7 +171,7 @@ model. It does not stop the camera stream. Camera capture is an independent life
 `stopCamera()`, or release the complete composition with `releaseAll()`.
 
 The default `modelInitializationPolicy` is `legacy`, preserving independent registration calls.
-Opt in to `latest-needed` when a host has one current pose-model demand, such as a story that can
+Opt in to `latest-needed` when a host has one current label-model demand, such as a story that can
 skip scenes. At most one heavy runtime load is active and one latest request is pending. A newer
 request cancels the active request cooperatively and replaces an older request that has not started.
 For A loading, then B pending, then C requested, B never reaches the TensorFlow loader; A is cleaned
@@ -181,7 +188,7 @@ disposes every late classifier/PoseNet result exactly once before its promise se
 model is never published in the registry. Shared fixed-PoseNet verification may finish and remain
 cached when the next latest request also needs it. Model cancellation does not stop the camera.
 
-TMPose does not infer scene or action reachability. A host should retain the signal when the same
+The composition API does not infer scene or action reachability. A host should retain the signal when the same
 model is needed by an imminent action, abort it when a skipped path has no nearby pose demand, or
 submit the replacement model when a skip changes that demand. `releaseAll()` cancels both active and
 pending registration work and waits for safe cleanup.
@@ -234,12 +241,12 @@ recognition state, and all preview settings. Concurrent selections run in call o
 switch restores the preceding successful camera and selection. Invalid selections use
 `TMPOSE-COMPOSITION-011`. `getCameraSelection()` returns an isolated immutable copy, and
 `getActiveCamera()` returns an immutable `{deviceId, label}` only while an identifiable camera is
-running. TMPose never persists device IDs. `releaseAll()` rejects queued selection work, waits for
+running. The extension never persists device IDs. `releaseAll()` rejects queued selection work, waits for
 an in-progress switch to become quiescent, and then stops the final stream; all four camera-device
 methods fail closed after release.
 
-TMPose owns the camera canvas used by Teachable Machine Pose and TensorFlow.js and requests a normal
-Canvas2D context for it. Physical-camera measurements of TMPose's 320×240, one-draw/one-read path
+The extension owns the camera canvas used by Teachable Machine and TensorFlow.js and requests a normal
+Canvas2D context for it. Physical-camera measurements of its 320x240, one-draw/one-read path
 did not show a repeatable end-to-end benefit from `willReadFrequently`; that hint improved a
 different read-heavy condition with four or more reads per draw, but could make video drawing more
 expensive. Chrome may therefore emit its Canvas2D readback warning during CPU inference. Preview
@@ -284,10 +291,10 @@ temporal-scoring and event feature flags off by default.
 
 ## Quick start
 
-1. Train pose classes such as `jump` and `stand` in Teachable Machine.
+1. Train classes such as `jump`, `card`, or `clap` in Teachable Machine.
 2. Export the model, upload it, and copy the model folder URL.
 3. Set that URL with `set model URL to [URL]`.
-4. Run `start recognition`, allow camera access, and use a result block in your script.
+4. Run `start recognition`, allow camera or microphone access, and use a result block in your script.
 
 ```text
 when green flag clicked
@@ -295,28 +302,29 @@ set model URL to [https://teachablemachine.withgoogle.com/models/.../]
 start recognition
 
 forever
-  if <pose is [jump] with confidence at least [0.75]?> then
+  if <label is [jump] with confidence at least [0.75]?> then
     ...
   end
 end
 ```
 
-`start recognition` starts the camera and loads the configured model when necessary. A separate
-`start camera` or `load model` step is only needed when a project wants to control startup phases
-individually.
+`start recognition` starts the required input and loads the configured model when necessary. Pose and
+image modes use the camera; audio mode uses the microphone. A separate `start camera` or `load model`
+step is only needed when a camera project wants to control startup phases individually.
 
 ## Reading recognition results
 
 | Block | Result |
 |---|---|
-| `current pose` | Class with the highest probability in the latest frame |
-| `confidence` | Current pose probability, rounded to two decimal places |
+| `current label` | Class with the highest probability in the latest frame |
+| `confidence` | Current label probability, rounded to two decimal places |
 | `confidence of [NAME]` | Probability of one named class |
-| `pose is [NAME]?` | Whether the named class has at least `0.75` confidence |
-| `pose is [NAME] with confidence at least [THRESHOLD]?` | Same test with a custom `0`–`1` threshold |
+| `label is [NAME]?` | Whether the named class has at least `0.75` confidence |
+| `label is [NAME] with confidence at least [THRESHOLD]?` | Same test with a custom `0`–`1` threshold |
 
 Live confidence reacts quickly and can fluctuate near a decision boundary. Better training data,
-lighting, camera framing, and a suitable threshold usually improve the result.
+lighting or audio quality, camera or microphone framing, and a suitable threshold usually improve
+the result.
 
 ## Camera selection, preview, and stopping
 
@@ -325,7 +333,7 @@ Use `refresh camera list` to detect video inputs, then choose `default camera`, 
 until the browser grants camera permission. Device IDs are browser- and machine-specific, so use
 the portable front/back choices when a project moves between devices. Changing the selection while
 the camera is running restarts only the camera stream, preserving the loaded model, recognition
-state, and preview settings. If switching fails, TMPose attempts to restore the previous camera and
+state, and preview settings. If switching fails, the extension attempts to restore the previous camera and
 records the error in `last error`.
 
 `camera count` reports the latest refreshed count. `camera device ID` and `camera device name`
@@ -338,12 +346,12 @@ switch between `mirrored` and `unmirrored`, including while the camera is runnin
 setting does not change the frames used for recognition. The `camera preview mirroring` reporter
 returns the current setting.
 
-- `stop recognition` clears current results but leaves the camera available;
+- `stop recognition` clears current results, stops audio listening, but leaves the camera available;
 - `stop camera` also stops recognition, releases the camera tracks, and removes the preview and SVG.
 
-TMPose performs pose estimation and classification in the browser and does not upload camera
-frames. It does fetch its runtime libraries and the published model. Stop the camera when the
-project no longer needs it.
+The extension performs pose, image, or audio classification in the browser and does not upload
+camera frames or microphone audio. It does fetch its runtime libraries and the published model. Stop
+recognition and the camera when the project no longer needs them.
 
 ## Optional SVG pose overlay
 
@@ -389,16 +397,16 @@ Each version 2 event includes `poseName`, `previousPoseName`, `score`, `reason` 
 ## Troubleshooting
 
 Read `last error` first when setup fails. Common causes are denied camera permission, a model editor
-URL instead of the published model folder URL, blocked network requests, or loading TMPose in the
-sandbox. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-tmpose/#troubleshooting)
-or [Japanese troubleshooting section](https://kubohiroya.github.io/turbowarp-tmpose/ja/#troubleshooting)
+URL instead of the published model folder URL, blocked network requests, or loading the extension in
+the sandbox. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/#troubleshooting)
+or [Japanese troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/ja/#troubleshooting)
 for step-by-step checks.
 
 ## Blocks
 
 <!-- BEGIN GENERATED BLOCKS -->
 
-### `TMPose version`
+### `Teachable Machine version`
 
 Returns the extension version.
 
@@ -407,9 +415,28 @@ Returns the extension version.
 | Type | REPORTER |
 | Opcode | `versionReporter` |
 
+### `set recognition mode to [MODE]`
+
+Selects whether the current Teachable Machine model recognizes poses, images, or audio.
+
+| Property | Value |
+|---|---|
+| Type | COMMAND |
+| Opcode | `setRecognitionMode` |
+| `MODE` | STRING, default: `pose`, menu: `recognitionModeMenu` |
+
+### `recognition mode`
+
+Returns the current recognition mode.
+
+| Property | Value |
+|---|---|
+| Type | REPORTER |
+| Opcode | `recognitionModeReporter` |
+
 ### `set model URL to [URL]`
 
-Sets the Teachable Machine Pose model URL.
+Sets the Teachable Machine model URL.
 
 | Property | Value |
 |---|---|
@@ -629,7 +656,7 @@ Scales the selected SVG style property from zero to its configured value using k
 
 ### `load model`
 
-Loads the configured pose model.
+Loads the configured Teachable Machine model.
 
 | Property | Value |
 |---|---|
@@ -647,7 +674,7 @@ Reports whether the model is loaded.
 
 ### `start recognition`
 
-Starts pose recognition.
+Starts recognition.
 
 | Property | Value |
 |---|---|
@@ -656,7 +683,7 @@ Starts pose recognition.
 
 ### `stop recognition`
 
-Stops pose recognition.
+Stops recognition.
 
 | Property | Value |
 |---|---|
@@ -672,9 +699,9 @@ Reports whether recognition is running.
 | Type | BOOLEAN |
 | Opcode | `isRecognizing` |
 
-### `current pose`
+### `current label`
 
-Returns the highest-scoring pose label.
+Returns the highest-scoring label.
 
 | Property | Value |
 |---|---|
@@ -683,7 +710,7 @@ Returns the highest-scoring pose label.
 
 ### `confidence`
 
-Returns the confidence of the current pose.
+Returns the confidence of the current label.
 
 | Property | Value |
 |---|---|
@@ -692,7 +719,7 @@ Returns the confidence of the current pose.
 
 ### `confidence of [NAME]`
 
-Returns the confidence for a named pose.
+Returns the confidence for a named label.
 
 | Property | Value |
 |---|---|
@@ -764,9 +791,9 @@ Returns the accumulated score for a named pose without rounding.
 | Feature flag | `temporalPoseScoring` |
 | `NAME` | STRING, default: `jump` |
 
-### `pose is [NAME]?`
+### `label is [NAME]?`
 
-Reports whether the named pose has at least 0.75 confidence.
+Reports whether the named label has at least 0.75 confidence.
 
 | Property | Value |
 |---|---|
@@ -774,9 +801,9 @@ Reports whether the named pose has at least 0.75 confidence.
 | Opcode | `isPose` |
 | `NAME` | STRING, default: `jump` |
 
-### `pose is [NAME] with confidence at least [THRESHOLD]?`
+### `label is [NAME] with confidence at least [THRESHOLD]?`
 
-Reports whether the named pose meets the given threshold.
+Reports whether the named label meets the given threshold.
 
 | Property | Value |
 |---|---|
@@ -833,7 +860,7 @@ pnpm check
 
 The check runs type checking, tests, the production build, generated-documentation validation,
 Pages link validation, distribution reproducibility, and an npm package dry run. The build produces
-`dist/tmpose.js`, `dist/composition.js`, `dist/runtime.js`, `dist/posenet.js`, and the three raw
+`dist/tm.js`, `dist/composition.js`, `dist/runtime.js`, `dist/posenet.js`, and the three raw
 PoseNet model assets under `dist/posenet/`.
 
 The version in `package.json` is the release source of truth. The runtime reporter appends
@@ -843,7 +870,7 @@ exact-version README examples, Pages badges, and release tag aligned with it.
 ### npm publishing
 
 npm publication uses GitHub Actions trusted publishing rather than a long-lived write token. The
-npm package settings must trust `kubohiroya/turbowarp-tmpose`, workflow file
+npm package settings must trust `kubohiroya/turbowarp-tm`, workflow file
 `publish-npm.yml`, for `npm publish`. After the annotated release tag and GitHub Release exist,
 dispatch **Publish npm package** with that tag. The workflow checks out the tag, verifies that it
 exactly matches `package.json`, runs the complete check, and publishes through a short-lived OIDC

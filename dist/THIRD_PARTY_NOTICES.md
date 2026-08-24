@@ -5,6 +5,8 @@ supply (`dist/posenet/`) include the following software and model data:
 
 - TensorFlow.js 1.3.1, Copyright Google LLC, licensed under Apache-2.0.
   Source: https://github.com/tensorflow/tfjs/tree/tfjs-v1.3.1
+- TensorFlow.js Speech Commands 0.4.0, Copyright Google LLC, licensed under
+  Apache-2.0. Source: https://github.com/tensorflow/tfjs-models/tree/v0.4.0/speech-commands
 - Teachable Machine Pose 0.8.3, Copyright Google LLC, licensed under
   Apache-2.0. Source: https://github.com/googlecreativelab/teachablemachine-community-js
 - PoseNet 2.2.2 runtime and MobileNetV1 0.75 / stride 16 model data,
