@@ -26,14 +26,14 @@ jobs:
       - name: Create ZIP archive
         run: |
           cd dist
-          zip -r ../turbowarp-tmpose.zip .
+          zip -r ../turbowarp-tm.zip .
       - name: Create npm package archive
         run: npm pack --ignore-scripts
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            dist/tmpose.js
+            dist/tm.js
             dist/composition.js
             dist/runtime.js
             dist/posenet.js
@@ -41,5 +41,5 @@ jobs:
             dist/posenet/mobilenet-v1-075-stride16/group1-shard1of2.bin
             dist/posenet/mobilenet-v1-075-stride16/group1-shard2of2.bin
             dist/THIRD_PARTY_NOTICES.md
-            kubohiroya-turbowarp-tmpose-*.tgz
-            turbowarp-tmpose.zip
+            kubohiroya-turbowarp-tm-*.tgz
+            turbowarp-tm.zip

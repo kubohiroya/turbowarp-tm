@@ -16,6 +16,9 @@ const readme = await readFile('README.md', 'utf8');
 if (readme.split(pinnedPackage).length - 1 < 2) {
   errors.push(`README.md must contain version-pinned install and CDN examples for ${pinnedPackage}`);
 }
+if (!readme.includes('MPL-2.0')) {
+  errors.push('README.md must identify the package license as SPDX MPL-2.0');
+}
 
 for (const path of ['docs/index.html', 'docs/ja/index.html']) {
   const source = await readFile(path, 'utf8');
@@ -62,6 +65,20 @@ const notices = await readFile('THIRD_PARTY_NOTICES.md', 'utf8');
 const distributedNotices = await readFile('dist/THIRD_PARTY_NOTICES.md', 'utf8');
 if (notices !== distributedNotices) {
   errors.push('dist/THIRD_PARTY_NOTICES.md must match the repository notice');
+}
+
+const license = await readFile('LICENSE', 'utf8');
+if (!license.startsWith('Mozilla Public License Version 2.0')) {
+  errors.push('LICENSE must contain the Mozilla Public License Version 2.0 full text');
+}
+
+for (const path of ['.github/workflows/ci.yml', '.github/workflows/release.yml']) {
+  const source = await readFile(path, 'utf8');
+  const legacyArchiveName = 'turbowarp-' + 'tm' + 'pose';
+  const legacyBundlePath = 'dist/' + 'tm' + 'pose.js';
+  if (source.includes(legacyArchiveName) || source.includes(legacyBundlePath)) {
+    errors.push(`${path} must publish TurboWarp TM artifact names`);
+  }
 }
 
 const poseNetModule = await readFile('dist/posenet.js', 'utf8');
