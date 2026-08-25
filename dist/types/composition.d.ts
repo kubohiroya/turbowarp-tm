@@ -2,7 +2,7 @@ import { type AccumulatedPoseChangedEventV2 } from './extension.js';
 import { type PoseBoneStyle, type PoseJointStyle, type PoseKeypointName, type PoseOverlayConfidenceScaling } from './pose-overlay.js';
 export type { AccumulatedPoseChangedEventV2 } from './extension.js';
 export type { PoseBoneStyle, PoseJointStyle, PoseKeypointName, PoseOverlayConfidenceScaling } from './pose-overlay.js';
-export interface TMPoseCompositionRuntime {
+export interface TMCompositionRuntime {
     Webcam: new (width: number, height: number, flipHorizontal: boolean) => unknown;
     loadFromFiles(model: File, weights: File, metadata: File, options?: Readonly<{
         signal?: AbortSignal;
@@ -41,7 +41,7 @@ export interface CameraDevice {
     readonly label: string;
 }
 export type AccumulatedPoseListener = (event: Readonly<AccumulatedPoseChangedEventV2>) => void;
-export interface TMPoseComposition {
+export interface TMComposition {
     registerPoseModel(input: PoseModelRegistrationInput, options?: PoseModelRegistrationOptions): Promise<PoseModelRegistration>;
     activatePoseModel(name: unknown): void;
     releasePoseModel(name: unknown): Promise<void>;
@@ -81,10 +81,10 @@ export interface TMPoseComposition {
     accumulatedScoreOf(name: unknown): number;
     subscribeAccumulatedPose(listener: AccumulatedPoseListener): () => void;
 }
-export interface TMPoseCompositionOptions {
-    runtime: TMPoseCompositionRuntime;
+export interface TMCompositionOptions {
+    runtime: TMCompositionRuntime;
     createFile?: (bytes: Uint8Array, name: string, mimeType: string) => File;
     modelInitializationPolicy?: PoseModelInitializationPolicy;
     parallelModelInitialization?: boolean;
 }
-export declare function createTMPoseComposition(options: TMPoseCompositionOptions): TMPoseComposition;
+export declare function createTMComposition(options: TMCompositionOptions): TMComposition;

@@ -1,5 +1,5 @@
 import {
-  createTMPoseComposition,
+  createTMComposition,
   type AccumulatedPoseChangedEventV2,
   type CameraDevice,
   type CameraPreference,
@@ -13,14 +13,14 @@ import {
   type PreviewMirroring,
   type PreviewPosition,
   type PoseOverlayConfidenceScaling,
-  type TMPoseComposition,
-  type TMPoseCompositionRuntime
+  type TMComposition,
+  type TMCompositionRuntime
 } from '@kubohiroya/turbowarp-tm/composition';
 
-declare const runtime: TMPoseCompositionRuntime;
+declare const runtime: TMCompositionRuntime;
 
 const initializationPolicy: PoseModelInitializationPolicy = 'latest-needed';
-const composition: TMPoseComposition = createTMPoseComposition({
+const composition: TMComposition = createTMComposition({
   runtime,
   modelInitializationPolicy: initializationPolicy,
   parallelModelInitialization: true

@@ -1,7 +1,7 @@
 import {readFile} from 'node:fs/promises';
 import {describe, expect, it, vi} from 'vitest';
 import {
-  createBundledTMPoseRuntime,
+  createBundledTMRuntime,
   createPoseNetProjectBundle,
   createPoseNetProjectBundleFromLoader,
   loadPoseNetBundle,
@@ -61,16 +61,16 @@ describe('PoseNet offline bundle', () => {
 
     await expect(
       verifyPoseNetBundle(tampered, {subtleCrypto: crypto.subtle})
-    ).rejects.toMatchObject({code: 'TMPOSE-POSENET-ASSET-003'});
+    ).rejects.toMatchObject({code: 'TM-POSENET-ASSET-003'});
     await expect(
       verifyPoseNetBundle(files.slice(0, 2), {subtleCrypto: crypto.subtle})
-    ).rejects.toMatchObject({code: 'TMPOSE-POSENET-ASSET-004'});
+    ).rejects.toMatchObject({code: 'TM-POSENET-ASSET-004'});
 
     const oversized = files.map((file) => ({...file, bytes: new Uint8Array(file.bytes)}));
     oversized[0]!.bytes = new Uint8Array(65 * 1024);
     await expect(
       verifyPoseNetBundle(oversized, {subtleCrypto: crypto.subtle})
-    ).rejects.toMatchObject({code: 'TMPOSE-POSENET-ASSET-004'});
+    ).rejects.toMatchObject({code: 'TM-POSENET-ASSET-004'});
   });
 
   it('starts all independent SHA-256 checks before waiting for any one file', async () => {
@@ -105,7 +105,7 @@ describe('PoseNet offline bundle', () => {
         subtleCrypto: {digest},
         signal: controller.signal
       })
-    ).rejects.toMatchObject({name: 'AbortError', code: 'TMPOSE-POSENET-ABORTED'});
+    ).rejects.toMatchObject({name: 'AbortError', code: 'TM-POSENET-ABORTED'});
     expect(digest).not.toHaveBeenCalled();
   });
 
@@ -161,11 +161,11 @@ describe('PoseNet offline bundle', () => {
         expect((await response.arrayBuffer()).byteLength).toBe(49_720);
         await expect(
           globalObject.fetch('https://example.invalid/not-posenet.bin')
-        ).rejects.toMatchObject({code: 'TMPOSE-POSENET-FETCH-001'});
+        ).rejects.toMatchObject({code: 'TM-POSENET-FETCH-001'});
         return {ok: true};
       }
     };
-    const wrapped = createBundledTMPoseRuntime({
+    const wrapped = createBundledTMRuntime({
       runtime,
       globalObject,
       projectBundle: descriptor,
@@ -192,7 +192,7 @@ describe('PoseNet offline bundle', () => {
       Webcam: class {},
       loadFromFiles: vi.fn(async () => ({model: classifier, posenetModel: poseNet}))
     };
-    const wrapped = createBundledTMPoseRuntime({
+    const wrapped = createBundledTMRuntime({
       runtime,
       globalObject: {Response, crypto, fetch: vi.fn()},
       files,
@@ -200,7 +200,7 @@ describe('PoseNet offline bundle', () => {
     });
 
     await expect(wrapped.loadFromFiles({}, {}, {})).rejects.toMatchObject({
-      code: 'TMPOSE-POSENET-ASSET-003'
+      code: 'TM-POSENET-ASSET-003'
     });
     expect(runtime.loadFromFiles).toHaveBeenCalledOnce();
     expect(classifier.dispose).toHaveBeenCalledOnce();
@@ -213,7 +213,7 @@ describe('PoseNet offline bundle', () => {
       Webcam: class {},
       loadFromFiles: vi.fn(() => firstLoad.promise)
     };
-    const wrapped = createBundledTMPoseRuntime({
+    const wrapped = createBundledTMRuntime({
       runtime,
       globalObject: {Response, crypto, fetch: vi.fn()},
       files: await sourceFiles(),
@@ -229,7 +229,7 @@ describe('PoseNet offline bundle', () => {
     await expect(first).resolves.toEqual({ok: true});
     await expect(skipped).rejects.toMatchObject({
       name: 'AbortError',
-      code: 'TMPOSE-POSENET-ABORTED'
+      code: 'TM-POSENET-ABORTED'
     });
     expect(runtime.loadFromFiles).toHaveBeenCalledOnce();
   });
@@ -244,7 +244,7 @@ describe('PoseNet offline bundle', () => {
       Webcam: class {},
       loadFromFiles: vi.fn(() => pendingLoad.promise)
     };
-    const wrapped = createBundledTMPoseRuntime({
+    const wrapped = createBundledTMRuntime({
       runtime,
       globalObject,
       files: await sourceFiles(),
@@ -258,7 +258,7 @@ describe('PoseNet offline bundle', () => {
     pendingLoad.resolve({model: classifier, posenetModel: poseNet});
     await expect(loading).rejects.toMatchObject({
       name: 'AbortError',
-      code: 'TMPOSE-POSENET-ABORTED'
+      code: 'TM-POSENET-ABORTED'
     });
     expect(classifier.dispose).toHaveBeenCalledOnce();
     expect(poseNet.dispose).toHaveBeenCalledOnce();
@@ -270,7 +270,7 @@ describe('PoseNet offline bundle', () => {
       Webcam: class {},
       loadFromFiles: vi.fn(async () => ({ok: true}))
     };
-    const wrapped = createBundledTMPoseRuntime({
+    const wrapped = createBundledTMRuntime({
       runtime,
       globalObject: {Response, crypto, fetch: vi.fn()},
       files: await sourceFiles(),
@@ -283,7 +283,7 @@ describe('PoseNet offline bundle', () => {
       parallelModelInitialization: true
     });
     expect(() =>
-      createBundledTMPoseRuntime({
+      createBundledTMRuntime({
         runtime,
         files: [],
         parallelModelInitialization: 'yes' as never

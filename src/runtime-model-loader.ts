@@ -15,17 +15,17 @@ type DisposableResource = {
   dispose(): void | Promise<void>;
 };
 
-export class TMPoseRuntimeAbortError extends Error {
-  readonly code = 'TMPOSE-RUNTIME-ABORTED';
+export class TMRuntimeAbortError extends Error {
+  readonly code = 'TM-RUNTIME-ABORTED';
 
   constructor() {
-    super('TMPose runtime model loading was cancelled.');
+    super('TM runtime model loading was cancelled.');
     this.name = 'AbortError';
   }
 }
 
-function abortError(): TMPoseRuntimeAbortError {
-  return new TMPoseRuntimeAbortError();
+function abortError(): TMRuntimeAbortError {
+  return new TMRuntimeAbortError();
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -44,7 +44,7 @@ function disposable(value: unknown): DisposableResource | null {
 
 function validateOptions(value: unknown): RuntimeModelLoadOptions {
   if (value === undefined) return {};
-  if (!isRecord(value)) throw new TypeError('TMPose runtime load options must be an object.');
+  if (!isRecord(value)) throw new TypeError('TM runtime load options must be an object.');
   const signal = value.signal;
   if (
     signal !== undefined &&
@@ -53,7 +53,7 @@ function validateOptions(value: unknown): RuntimeModelLoadOptions {
       typeof signal.addEventListener !== 'function' ||
       typeof signal.removeEventListener !== 'function')
   ) {
-    throw new TypeError('TMPose runtime load signal must be an AbortSignal.');
+    throw new TypeError('TM runtime load signal must be an AbortSignal.');
   }
   const parallelModelInitialization = value.parallelModelInitialization;
   if (
@@ -79,7 +79,7 @@ async function disposeResources(values: ReadonlyArray<unknown>): Promise<unknown
 function throwLoadFailure(primaryErrors: unknown[], disposalErrors: unknown[]): never {
   const errors = [...primaryErrors, ...disposalErrors];
   if (errors.length === 1) throw errors[0];
-  throw new AggregateError(errors, 'TMPose runtime model loading and cleanup did not complete.');
+  throw new AggregateError(errors, 'TM runtime model loading and cleanup did not complete.');
 }
 
 function cancellationAwareErrors(error: unknown, signal?: AbortSignal): unknown[] {

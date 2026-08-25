@@ -1,12 +1,12 @@
 import {
-  createBundledTMPoseRuntime,
+  createBundledTMRuntime,
   createPoseNetProjectBundleFromLoader,
   loadPoseNetBundle,
   poseNetBundleManifest,
   type PoseNetBundleFileLoader,
   type PoseNetProjectBundle,
-  type TMPoseRuntimeLoadOptions,
-  type TMPoseBrowserRuntime
+  type TMRuntimeLoadOptions,
+  type TMBrowserRuntime
 } from '@kubohiroya/turbowarp-tm/posenet';
 
 const loadFile: PoseNetBundleFileLoader = async (file) => {
@@ -18,7 +18,7 @@ const loadFile: PoseNetBundleFileLoader = async (file) => {
 void loadPoseNetBundle(loadFile);
 void createPoseNetProjectBundleFromLoader(loadFile);
 
-const runtime: TMPoseBrowserRuntime = {
+const runtime: TMBrowserRuntime = {
   Webcam: class {},
   async loadFromFiles() {
     return undefined;
@@ -31,13 +31,13 @@ const projectBundle: PoseNetProjectBundle = {
   files: []
 };
 
-const bundledRuntime = createBundledTMPoseRuntime({
+const bundledRuntime = createBundledTMRuntime({
   runtime,
   projectBundle,
   parallelModelInitialization: true
 });
 const loadController = new AbortController();
-const loadOptions: TMPoseRuntimeLoadOptions = {
+const loadOptions: TMRuntimeLoadOptions = {
   signal: loadController.signal,
   parallelModelInitialization: true
 };

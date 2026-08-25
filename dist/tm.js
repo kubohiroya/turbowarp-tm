@@ -1,5 +1,5 @@
 // Name: Teachable Machine
-// ID: tmpose
+// ID: kubohiroyatm
 // Description: Use Teachable Machine pose, image, or audio models for recognition in TurboWarp.
 // By: Hiroya Kubo
 // License: MPL-2.0
@@ -76,15 +76,15 @@
     return Math.max(0, Math.min(1, confidence));
   }
   const name = "@kubohiroya/turbowarp-tm";
-  const version = "1.0.0";
+  const version = "2.0.0";
   const packageMetadata = {
     name,
     version
   };
-  const EXTENSION_ID = "tmpose";
+  const EXTENSION_ID = "kubohiroyatm";
   const VERSION = `${packageMetadata.version}-typescript`;
   const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tm/";
-  const ACCUMULATED_POSE_CHANGED_EVENT = "TMPOSE_ACCUMULATED_POSE_CHANGED";
+  const ACCUMULATED_POSE_CHANGED_EVENT = "TM_ACCUMULATED_POSE_CHANGED";
   const BLOCK_ICON_URI = `data:image/svg+xml,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8h13M43 8h13v13M8 43v13h13M43 56h13V43M32 25v15M20 31l12 5 12-5M32 40 23 52M32 40l9 12"/><circle cx="32" cy="18" r="5"/></g></svg>'
   )}`;
@@ -236,7 +236,7 @@
     const active = loadingPromises.get(src);
     if (active) return active;
     const existing = Array.from(document.scripts).find((script) => script.src === src);
-    if (existing?.dataset.tmposeLoaded === "true") return Promise.resolve();
+    if (existing?.dataset.kubohiroyatmLoaded === "true") return Promise.resolve();
     const promise = new Promise((resolve, reject) => {
       const script = existing ?? document.createElement("script");
       const cleanup = () => {
@@ -245,13 +245,13 @@
       };
       const handleLoad = () => {
         cleanup();
-        script.dataset.tmposeLoaded = "true";
+        script.dataset.kubohiroyatmLoaded = "true";
         resolve();
       };
       const handleError = () => {
         cleanup();
         loadingPromises.delete(src);
-        reject(new Error("TMPose: Failed to load script: " + src));
+        reject(new Error("TM: Failed to load script: " + src));
       };
       script.addEventListener("load", handleLoad, { once: true });
       script.addEventListener("error", handleError, { once: true });
@@ -281,13 +281,13 @@
   }
   function initializeCameraReadbackContext(canvas, _tensorflowBackend) {
     if (typeof canvas !== "object" || canvas === null || typeof canvas.getContext !== "function") {
-      throw new Error("TMPose: Webcam canvas does not provide a 2D context.");
+      throw new Error("TM: Webcam canvas does not provide a 2D context.");
     }
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("TMPose: Webcam canvas 2D context is unavailable.");
+    if (!context) throw new Error("TM: Webcam canvas 2D context is unavailable.");
     return context;
   }
-  class TMPoseExtension {
+  class TMExtension {
     constructor(featureFlags = {}, dependencies = {}) {
       this.featureFlags = { ...FEATURE_FLAGS, ...featureFlags };
       this.tmPoseRuntime = dependencies.poseRuntime ?? dependencies.runtime ?? null;
@@ -561,7 +561,7 @@
     async refreshCameraDevices() {
       const mediaDevices = typeof navigator === "undefined" ? void 0 : navigator.mediaDevices;
       if (!mediaDevices || typeof mediaDevices.enumerateDevices !== "function") {
-        throw new Error("TMPose: Camera enumeration is not available in this browser.");
+        throw new Error("TM: Camera enumeration is not available in this browser.");
       }
       const devices = await mediaDevices.enumerateDevices();
       this.cameraDevices = devices.filter((device) => device.kind === "videoinput").map((device) => ({ deviceId: device.deviceId, label: device.label }));
@@ -583,7 +583,7 @@
     }
     setCameraDeviceId(deviceId) {
       if (typeof deviceId !== "string" || deviceId.trim().length === 0) {
-        return Promise.reject(new Error("TMPose: Camera device ID must be a non-empty string."));
+        return Promise.reject(new Error("TM: Camera device ID must be a non-empty string."));
       }
       return this.enqueueCameraSelection({ kind: "device", value: deviceId });
     }
@@ -613,7 +613,7 @@
         } catch (rollbackError) {
           const error = new AggregateError(
             [switchError, rollbackError],
-            "TMPose: Camera switch and rollback both failed."
+            "TM: Camera switch and rollback both failed."
           );
           this.setLastError(error);
           throw error;
@@ -643,7 +643,7 @@
     showPreview() {
       try {
         this.previewVisible = true;
-        if (!this.webcam?.canvas) throw new Error("TMPose: Start the camera before showing the preview.");
+        if (!this.webcam?.canvas) throw new Error("TM: Start the camera before showing the preview.");
         this.attachPreviewToStage();
         this.previewCanvas.style.display = "block";
         this.updatePoseOverlayVisibility();
@@ -698,7 +698,7 @@
     }
     setPoseJointStyle(args) {
       const part = String(args.PART ?? "");
-      if (!isPoseKeypointName(part)) throw new Error(`TMPose: Unknown PoseNet joint: ${part}`);
+      if (!isPoseKeypointName(part)) throw new Error(`TM: Unknown PoseNet joint: ${part}`);
       const previous = this.poseJointStyles[part];
       this.poseJointStyles[part] = {
         color: normalizePoseColor(args.COLOR, previous.color),
@@ -731,7 +731,7 @@
         "bone-opacity": "boneOpacity",
         "bone-width": "boneWidth"
       }[property];
-      if (!key) throw new Error(`TMPose: Unknown confidence-scaled property: ${property}`);
+      if (!key) throw new Error(`TM: Unknown confidence-scaled property: ${property}`);
       this.poseConfidenceScaling[key] = normalizePoseOverlayVisibility(args.STATE);
       this.redrawPoseOverlay();
     }
@@ -761,10 +761,10 @@
     }
     usePreparedModel(model) {
       if (!model || typeof model !== "object") {
-        throw new TypeError("TMPose: Prepared model must be an object.");
+        throw new TypeError("TM: Prepared model must be an object.");
       }
       if (this.recognizing && this.model !== model) {
-        throw new Error("TMPose: Stop recognition before changing the active model.");
+        throw new Error("TM: Stop recognition before changing the active model.");
       }
       this.model = model;
       this.modelURL = "";
@@ -874,7 +874,7 @@
       }
       const editorStage = document.querySelector(".stage_stage-wrapper_2bejr") || document.querySelector('[class*="stage_stage-wrapper"]') || document.querySelector('[class*="stage-wrapper"]') || document.querySelector('[class*="stage-wrapper_stage-wrapper"]');
       if (editorStage) return editorStage;
-      throw new Error("TMPose: TurboWarp stage element was not found.");
+      throw new Error("TM: TurboWarp stage element was not found.");
     }
     findLikelyStageCanvas() {
       const webcamCanvas = this.webcam?.canvas ?? null;
@@ -887,18 +887,18 @@
       if (visibleCandidates[0]) return visibleCandidates[0].canvas;
       const fallbackCandidates = allCanvases.map((canvas) => ({ canvas, score: canvasScore(canvas.width, canvas.height) })).filter((item) => item.canvas.width >= 200 && item.canvas.height >= 150).sort((left, right) => right.score - left.score);
       if (fallbackCandidates[0]) return fallbackCandidates[0].canvas;
-      throw new Error("TMPose: No likely stage canvas was found. The editor or packager DOM may be unsupported.");
+      throw new Error("TM: No likely stage canvas was found. The editor or packager DOM may be unsupported.");
     }
     validatePreviewAttachment(stage, canvas) {
       if (!stage || !canvas || canvas.parentElement !== stage) {
-        throw new Error("TMPose: Preview canvas was not attached to the stage.");
+        throw new Error("TM: Preview canvas was not attached to the stage.");
       }
       const canvasStyle = window.getComputedStyle(canvas);
       if (canvasStyle.display === "none" && this.previewVisible) {
-        throw new Error("TMPose: Preview canvas is hidden by display:none.");
+        throw new Error("TM: Preview canvas is hidden by display:none.");
       }
       if (canvasStyle.visibility === "hidden" && this.previewVisible) {
-        throw new Error("TMPose: Preview canvas is hidden by visibility:hidden.");
+        throw new Error("TM: Preview canvas is hidden by visibility:hidden.");
       }
       const stageRect = stage.getBoundingClientRect();
       const canvasRect = canvas.getBoundingClientRect();
@@ -906,10 +906,10 @@
       const layoutUnavailable = stageRect.width === 0 || stageRect.height === 0;
       if (!documentHidden && !layoutUnavailable && this.previewVisible) {
         if (canvasRect.width <= 0 || canvasRect.height <= 0) {
-          throw new Error("TMPose: Preview canvas was attached but has zero size.");
+          throw new Error("TM: Preview canvas was attached but has zero size.");
         }
         if (!rectanglesIntersect(stageRect, canvasRect)) {
-          throw new Error("TMPose: Preview canvas does not intersect the stage.");
+          throw new Error("TM: Preview canvas does not intersect the stage.");
         }
       }
     }
@@ -1029,8 +1029,8 @@
       }
     }
     attachPreviewToStage() {
-      if (!this.webcam) throw new Error("TMPose: Start the camera before attaching the preview.");
-      if (!this.webcam.canvas) throw new Error("TMPose: webcam.canvas is unavailable.");
+      if (!this.webcam) throw new Error("TM: Start the camera before attaching the preview.");
+      if (!this.webcam.canvas) throw new Error("TM: webcam.canvas is unavailable.");
       const stage = this.findStageElement();
       const canvas = this.webcam.canvas;
       let stageCanvas = null;
@@ -1090,7 +1090,7 @@
     }
     updatePreviewStyle() {
       const canvas = this.previewCanvas;
-      if (!canvas) throw new Error("TMPose: Start the camera before positioning the preview.");
+      if (!canvas) throw new Error("TM: Start the camera before positioning the preview.");
       const targets = [canvas, this.poseOverlaySvg].filter(Boolean);
       for (const target of targets) {
         Object.assign(target.style, {
@@ -1374,12 +1374,12 @@
     }
   }
   if (!Scratch.extensions.unsandboxed) {
-    throw new Error("TMPose must run without the extension sandbox.");
+    throw new Error("TM must run without the extension sandbox.");
   }
-  const extension = new TMPoseExtension();
+  const extension = new TMExtension();
   Scratch.extensions.register(extension);
   if (Scratch.vm?.runtime) {
-    Scratch.vm.runtime.ext_tmpose = extension;
+    Scratch.vm.runtime.ext_kubohiroyatm = extension;
   }
 
 })(Scratch);

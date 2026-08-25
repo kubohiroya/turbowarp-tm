@@ -17,16 +17,16 @@ type RuntimeGlobal = typeof globalThis & {
 
 const runtimeGlobal = globalThis as RuntimeGlobal;
 if (runtimeGlobal.tf !== undefined && runtimeGlobal.tf !== tensorflow) {
-  throw new Error('TMPose browser runtime found a different global TensorFlow.js instance.');
+  throw new Error('TM browser runtime found a different global TensorFlow.js instance.');
 }
 if (runtimeGlobal.tmPose !== undefined && runtimeGlobal.tmPose !== teachableMachinePose) {
-  throw new Error('TMPose browser runtime found a different global Teachable Machine Pose instance.');
+  throw new Error('TM browser runtime found a different global Teachable Machine Pose instance.');
 }
 if (runtimeGlobal.tmImage !== undefined && runtimeGlobal.tmImage !== teachableMachineImage) {
-  throw new Error('TMPose browser runtime found a different global Teachable Machine Image instance.');
+  throw new Error('TM browser runtime found a different global Teachable Machine Image instance.');
 }
 if (runtimeGlobal.speechCommands !== undefined && runtimeGlobal.speechCommands !== speechCommands) {
-  throw new Error('TMPose browser runtime found a different global speech-commands instance.');
+  throw new Error('TM browser runtime found a different global speech-commands instance.');
 }
 
 const loadFromFiles = createRuntimeModelFileLoader({
@@ -86,4 +86,3 @@ const runtimeMetadata = Object.freeze({
 });
 runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-tm/runtime')] = runtimeMetadata;
 runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-teachablemachine/runtime')] = runtimeMetadata;
-runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-tmpose/runtime')] = runtimeMetadata;

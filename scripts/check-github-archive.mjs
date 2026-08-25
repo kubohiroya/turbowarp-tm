@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
-const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'tmpose-archive-'));
+const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'kubohiroyatm-archive-'));
 const archiveRoot = path.join(temporaryRoot, 'package');
 const excludedTopLevel = new Set(['.git', 'dist', 'node_modules']);
 

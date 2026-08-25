@@ -67,15 +67,15 @@ function confidenceMultiplier(value) {
   return Math.max(0, Math.min(1, confidence));
 }
 const name = "@kubohiroya/turbowarp-tm";
-const version = "1.0.0";
+const version = "2.0.0";
 const packageMetadata = {
   name,
   version
 };
-const EXTENSION_ID = "tmpose";
+const EXTENSION_ID = "kubohiroyatm";
 const VERSION = `${packageMetadata.version}-typescript`;
 const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tm/";
-const ACCUMULATED_POSE_CHANGED_EVENT = "TMPOSE_ACCUMULATED_POSE_CHANGED";
+const ACCUMULATED_POSE_CHANGED_EVENT = "TM_ACCUMULATED_POSE_CHANGED";
 const BLOCK_ICON_URI = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8h13M43 8h13v13M8 43v13h13M43 56h13V43M32 25v15M20 31l12 5 12-5M32 40 23 52M32 40l9 12"/><circle cx="32" cy="18" r="5"/></g></svg>'
 )}`;
@@ -227,7 +227,7 @@ function loadScript(src) {
   const active = loadingPromises.get(src);
   if (active) return active;
   const existing = Array.from(document.scripts).find((script) => script.src === src);
-  if (existing?.dataset.tmposeLoaded === "true") return Promise.resolve();
+  if (existing?.dataset.kubohiroyatmLoaded === "true") return Promise.resolve();
   const promise = new Promise((resolve, reject) => {
     const script = existing ?? document.createElement("script");
     const cleanup = () => {
@@ -236,13 +236,13 @@ function loadScript(src) {
     };
     const handleLoad = () => {
       cleanup();
-      script.dataset.tmposeLoaded = "true";
+      script.dataset.kubohiroyatmLoaded = "true";
       resolve();
     };
     const handleError = () => {
       cleanup();
       loadingPromises.delete(src);
-      reject(new Error("TMPose: Failed to load script: " + src));
+      reject(new Error("TM: Failed to load script: " + src));
     };
     script.addEventListener("load", handleLoad, { once: true });
     script.addEventListener("error", handleError, { once: true });
@@ -272,13 +272,13 @@ function isDocumentHidden() {
 }
 function initializeCameraReadbackContext(canvas, _tensorflowBackend) {
   if (typeof canvas !== "object" || canvas === null || typeof canvas.getContext !== "function") {
-    throw new Error("TMPose: Webcam canvas does not provide a 2D context.");
+    throw new Error("TM: Webcam canvas does not provide a 2D context.");
   }
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("TMPose: Webcam canvas 2D context is unavailable.");
+  if (!context) throw new Error("TM: Webcam canvas 2D context is unavailable.");
   return context;
 }
-class TMPoseExtension {
+class TMExtension {
   constructor(featureFlags = {}, dependencies = {}) {
     this.featureFlags = { ...FEATURE_FLAGS, ...featureFlags };
     this.tmPoseRuntime = dependencies.poseRuntime ?? dependencies.runtime ?? null;
@@ -552,7 +552,7 @@ class TMPoseExtension {
   async refreshCameraDevices() {
     const mediaDevices = typeof navigator === "undefined" ? void 0 : navigator.mediaDevices;
     if (!mediaDevices || typeof mediaDevices.enumerateDevices !== "function") {
-      throw new Error("TMPose: Camera enumeration is not available in this browser.");
+      throw new Error("TM: Camera enumeration is not available in this browser.");
     }
     const devices = await mediaDevices.enumerateDevices();
     this.cameraDevices = devices.filter((device) => device.kind === "videoinput").map((device) => ({ deviceId: device.deviceId, label: device.label }));
@@ -574,7 +574,7 @@ class TMPoseExtension {
   }
   setCameraDeviceId(deviceId) {
     if (typeof deviceId !== "string" || deviceId.trim().length === 0) {
-      return Promise.reject(new Error("TMPose: Camera device ID must be a non-empty string."));
+      return Promise.reject(new Error("TM: Camera device ID must be a non-empty string."));
     }
     return this.enqueueCameraSelection({ kind: "device", value: deviceId });
   }
@@ -604,7 +604,7 @@ class TMPoseExtension {
       } catch (rollbackError) {
         const error = new AggregateError(
           [switchError, rollbackError],
-          "TMPose: Camera switch and rollback both failed."
+          "TM: Camera switch and rollback both failed."
         );
         this.setLastError(error);
         throw error;
@@ -634,7 +634,7 @@ class TMPoseExtension {
   showPreview() {
     try {
       this.previewVisible = true;
-      if (!this.webcam?.canvas) throw new Error("TMPose: Start the camera before showing the preview.");
+      if (!this.webcam?.canvas) throw new Error("TM: Start the camera before showing the preview.");
       this.attachPreviewToStage();
       this.previewCanvas.style.display = "block";
       this.updatePoseOverlayVisibility();
@@ -689,7 +689,7 @@ class TMPoseExtension {
   }
   setPoseJointStyle(args) {
     const part = String(args.PART ?? "");
-    if (!isPoseKeypointName(part)) throw new Error(`TMPose: Unknown PoseNet joint: ${part}`);
+    if (!isPoseKeypointName(part)) throw new Error(`TM: Unknown PoseNet joint: ${part}`);
     const previous = this.poseJointStyles[part];
     this.poseJointStyles[part] = {
       color: normalizePoseColor(args.COLOR, previous.color),
@@ -722,7 +722,7 @@ class TMPoseExtension {
       "bone-opacity": "boneOpacity",
       "bone-width": "boneWidth"
     }[property];
-    if (!key) throw new Error(`TMPose: Unknown confidence-scaled property: ${property}`);
+    if (!key) throw new Error(`TM: Unknown confidence-scaled property: ${property}`);
     this.poseConfidenceScaling[key] = normalizePoseOverlayVisibility(args.STATE);
     this.redrawPoseOverlay();
   }
@@ -752,10 +752,10 @@ class TMPoseExtension {
   }
   usePreparedModel(model) {
     if (!model || typeof model !== "object") {
-      throw new TypeError("TMPose: Prepared model must be an object.");
+      throw new TypeError("TM: Prepared model must be an object.");
     }
     if (this.recognizing && this.model !== model) {
-      throw new Error("TMPose: Stop recognition before changing the active model.");
+      throw new Error("TM: Stop recognition before changing the active model.");
     }
     this.model = model;
     this.modelURL = "";
@@ -865,7 +865,7 @@ class TMPoseExtension {
     }
     const editorStage = document.querySelector(".stage_stage-wrapper_2bejr") || document.querySelector('[class*="stage_stage-wrapper"]') || document.querySelector('[class*="stage-wrapper"]') || document.querySelector('[class*="stage-wrapper_stage-wrapper"]');
     if (editorStage) return editorStage;
-    throw new Error("TMPose: TurboWarp stage element was not found.");
+    throw new Error("TM: TurboWarp stage element was not found.");
   }
   findLikelyStageCanvas() {
     const webcamCanvas = this.webcam?.canvas ?? null;
@@ -878,18 +878,18 @@ class TMPoseExtension {
     if (visibleCandidates[0]) return visibleCandidates[0].canvas;
     const fallbackCandidates = allCanvases.map((canvas) => ({ canvas, score: canvasScore(canvas.width, canvas.height) })).filter((item) => item.canvas.width >= 200 && item.canvas.height >= 150).sort((left, right) => right.score - left.score);
     if (fallbackCandidates[0]) return fallbackCandidates[0].canvas;
-    throw new Error("TMPose: No likely stage canvas was found. The editor or packager DOM may be unsupported.");
+    throw new Error("TM: No likely stage canvas was found. The editor or packager DOM may be unsupported.");
   }
   validatePreviewAttachment(stage, canvas) {
     if (!stage || !canvas || canvas.parentElement !== stage) {
-      throw new Error("TMPose: Preview canvas was not attached to the stage.");
+      throw new Error("TM: Preview canvas was not attached to the stage.");
     }
     const canvasStyle = window.getComputedStyle(canvas);
     if (canvasStyle.display === "none" && this.previewVisible) {
-      throw new Error("TMPose: Preview canvas is hidden by display:none.");
+      throw new Error("TM: Preview canvas is hidden by display:none.");
     }
     if (canvasStyle.visibility === "hidden" && this.previewVisible) {
-      throw new Error("TMPose: Preview canvas is hidden by visibility:hidden.");
+      throw new Error("TM: Preview canvas is hidden by visibility:hidden.");
     }
     const stageRect = stage.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
@@ -897,10 +897,10 @@ class TMPoseExtension {
     const layoutUnavailable = stageRect.width === 0 || stageRect.height === 0;
     if (!documentHidden && !layoutUnavailable && this.previewVisible) {
       if (canvasRect.width <= 0 || canvasRect.height <= 0) {
-        throw new Error("TMPose: Preview canvas was attached but has zero size.");
+        throw new Error("TM: Preview canvas was attached but has zero size.");
       }
       if (!rectanglesIntersect(stageRect, canvasRect)) {
-        throw new Error("TMPose: Preview canvas does not intersect the stage.");
+        throw new Error("TM: Preview canvas does not intersect the stage.");
       }
     }
   }
@@ -1020,8 +1020,8 @@ class TMPoseExtension {
     }
   }
   attachPreviewToStage() {
-    if (!this.webcam) throw new Error("TMPose: Start the camera before attaching the preview.");
-    if (!this.webcam.canvas) throw new Error("TMPose: webcam.canvas is unavailable.");
+    if (!this.webcam) throw new Error("TM: Start the camera before attaching the preview.");
+    if (!this.webcam.canvas) throw new Error("TM: webcam.canvas is unavailable.");
     const stage = this.findStageElement();
     const canvas = this.webcam.canvas;
     let stageCanvas = null;
@@ -1081,7 +1081,7 @@ class TMPoseExtension {
   }
   updatePreviewStyle() {
     const canvas = this.previewCanvas;
-    if (!canvas) throw new Error("TMPose: Start the camera before positioning the preview.");
+    if (!canvas) throw new Error("TM: Start the camera before positioning the preview.");
     const targets = [canvas, this.poseOverlaySvg].filter(Boolean);
     for (const target of targets) {
       Object.assign(target.style, {
@@ -1373,9 +1373,9 @@ function compositionError(code, message) {
   return error;
 }
 function abortError(name2) {
-  const error = new Error(`TMPose model registration was cancelled: ${name2}`);
+  const error = new Error(`TM model registration was cancelled: ${name2}`);
   error.name = "AbortError";
-  Object.defineProperty(error, "code", { value: "TMPOSE-COMPOSITION-015" });
+  Object.defineProperty(error, "code", { value: "TM-COMPOSITION-015" });
   return error;
 }
 function aggregateCompositionError(code, message, errors) {
@@ -1397,7 +1397,7 @@ function hasCompleteDisposalContract(model) {
 }
 function requireName(value) {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw compositionError("TMPOSE-COMPOSITION-001", "Pose model name must be a non-empty string.");
+    throw compositionError("TM-COMPOSITION-001", "Pose model name must be a non-empty string.");
   }
   return value.trim();
 }
@@ -1407,12 +1407,12 @@ function copyBytes(value, path) {
   else if (value instanceof Uint8Array) bytes = value;
   else {
     throw compositionError(
-      "TMPOSE-COMPOSITION-002",
+      "TM-COMPOSITION-002",
       `Pose model file ${path} must provide an ArrayBuffer or Uint8Array.`
     );
   }
   if (bytes.byteLength === 0) {
-    throw compositionError("TMPOSE-COMPOSITION-002", `Pose model file ${path} is empty.`);
+    throw compositionError("TM-COMPOSITION-002", `Pose model file ${path} is empty.`);
   }
   return Uint8Array.from(bytes);
 }
@@ -1420,19 +1420,19 @@ function labelsFor(model) {
   const labels = model.getClassLabels?.();
   if (labels === void 0) return Object.freeze([]);
   if (!Array.isArray(labels) || labels.some((label) => typeof label !== "string")) {
-    throw compositionError("TMPOSE-COMPOSITION-004", "Loaded pose model returned invalid labels.");
+    throw compositionError("TM-COMPOSITION-004", "Loaded pose model returned invalid labels.");
   }
   return Object.freeze([...labels]);
 }
 function defaultCreateFile(bytes, name2, mimeType) {
   if (typeof File !== "function") {
-    throw compositionError("TMPOSE-COMPOSITION-003", "The browser File API is not available.");
+    throw compositionError("TM-COMPOSITION-003", "The browser File API is not available.");
   }
   return new File([bytes], name2, { type: mimeType });
 }
 function validateRuntime(value) {
   if (!isRecord(value) || typeof value.loadFromFiles !== "function" || typeof value.Webcam !== "function") {
-    throw new TypeError("TMPose composition runtime must provide loadFromFiles and Webcam.");
+    throw new TypeError("TM composition runtime must provide loadFromFiles and Webcam.");
   }
   return value;
 }
@@ -1450,20 +1450,20 @@ function validateRegistrationOptions(value) {
   if (value === void 0) return {};
   if (!isRecord(value)) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-015",
+      "TM-COMPOSITION-015",
       "Pose model registration options must be an object."
     );
   }
   if (Object.keys(value).some((key) => key !== "signal")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-015",
+      "TM-COMPOSITION-015",
       "Pose model registration options may only provide signal."
     );
   }
   const signal = value.signal;
   if (signal !== void 0 && (!isRecord(signal) || typeof signal.aborted !== "boolean" || typeof signal.addEventListener !== "function" || typeof signal.removeEventListener !== "function")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-015",
+      "TM-COMPOSITION-015",
       "Pose model registration signal must be an AbortSignal."
     );
   }
@@ -1472,7 +1472,7 @@ function validateRegistrationOptions(value) {
 function validateAccumulatedPoseConfiguration(value) {
   if (!isRecord(value) || Object.keys(value).length !== 3 || !Object.hasOwn(value, "accumulationPerSecond") || !Object.hasOwn(value, "decayPerSecond") || !Object.hasOwn(value, "scoreThreshold")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-008",
+      "TM-COMPOSITION-008",
       "Accumulated pose configuration must provide accumulationPerSecond, decayPerSecond, and scoreThreshold."
     );
   }
@@ -1481,7 +1481,7 @@ function validateAccumulatedPoseConfiguration(value) {
   const scoreThreshold = value.scoreThreshold;
   if (typeof accumulationPerSecond !== "number" || !Number.isFinite(accumulationPerSecond) || accumulationPerSecond < 0 || typeof decayPerSecond !== "number" || !Number.isFinite(decayPerSecond) || decayPerSecond < 0 || decayPerSecond > 1 || typeof scoreThreshold !== "number" || !Number.isFinite(scoreThreshold) || scoreThreshold < 0) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-008",
+      "TM-COMPOSITION-008",
       "Accumulated pose configuration values are out of range."
     );
   }
@@ -1490,7 +1490,7 @@ function validateAccumulatedPoseConfiguration(value) {
 function validatePreviewMirroring(value) {
   if (value !== "mirrored" && value !== "unmirrored") {
     throw compositionError(
-      "TMPOSE-COMPOSITION-010",
+      "TM-COMPOSITION-010",
       "Preview mirroring must be either mirrored or unmirrored."
     );
   }
@@ -1499,7 +1499,7 @@ function validatePreviewMirroring(value) {
 function validatePreviewPosition(value) {
   if (value !== "top-left" && value !== "top-right" && value !== "bottom-left" && value !== "bottom-right" && value !== "center" && value !== "full-stage") {
     throw compositionError(
-      "TMPOSE-COMPOSITION-013",
+      "TM-COMPOSITION-013",
       "Preview position must be top-left, top-right, bottom-left, bottom-right, center, or full-stage."
     );
   }
@@ -1508,7 +1508,7 @@ function validatePreviewPosition(value) {
 function validatePreviewOpacity(value) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-014",
+      "TM-COMPOSITION-014",
       "Preview opacity must be a finite number from 0 to 1."
     );
   }
@@ -1517,7 +1517,7 @@ function validatePreviewOpacity(value) {
 function validatePoseStyleColor(value, property) {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-016",
+      "TM-COMPOSITION-016",
       `Pose overlay ${property} must be a non-empty CSS color string.`
     );
   }
@@ -1527,7 +1527,7 @@ function validatePoseStyleNumber(value, property, maximum) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || maximum !== void 0 && value > maximum) {
     const range = maximum === void 0 ? "a non-negative finite number" : `from 0 to ${maximum}`;
     throw compositionError(
-      "TMPOSE-COMPOSITION-016",
+      "TM-COMPOSITION-016",
       `Pose overlay ${property} must be ${range}.`
     );
   }
@@ -1535,14 +1535,14 @@ function validatePoseStyleNumber(value, property, maximum) {
 }
 function validatePoseKeypointName(value) {
   if (!isPoseKeypointName(value)) {
-    throw compositionError("TMPOSE-COMPOSITION-016", "Pose overlay joint name is invalid.");
+    throw compositionError("TM-COMPOSITION-016", "Pose overlay joint name is invalid.");
   }
   return value;
 }
 function validatePoseJointStyle(value) {
   if (!isRecord(value) || Object.keys(value).length !== 3 || !Object.hasOwn(value, "color") || !Object.hasOwn(value, "opacity") || !Object.hasOwn(value, "radius")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-016",
+      "TM-COMPOSITION-016",
       "Pose joint style must provide color, opacity, and radius."
     );
   }
@@ -1555,7 +1555,7 @@ function validatePoseJointStyle(value) {
 function validatePoseBoneStyle(value) {
   if (!isRecord(value) || Object.keys(value).length !== 3 || !Object.hasOwn(value, "color") || !Object.hasOwn(value, "opacity") || !Object.hasOwn(value, "width")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-016",
+      "TM-COMPOSITION-016",
       "Pose bone style must provide color, opacity, and width."
     );
   }
@@ -1569,7 +1569,7 @@ function validatePoseOverlayConfidenceScaling(value) {
   const keys = ["jointOpacity", "jointRadius", "boneOpacity", "boneWidth"];
   if (!isRecord(value) || Object.keys(value).length !== keys.length || keys.some((key) => !Object.hasOwn(value, key) || typeof value[key] !== "boolean")) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-016",
+      "TM-COMPOSITION-016",
       "Pose confidence scaling must provide four boolean style options."
     );
   }
@@ -1584,7 +1584,7 @@ function validateCameraSelection(value) {
   if (value === "default" || value === "front" || value === "back") return value;
   if (!isRecord(value) || Object.keys(value).length !== 1 || !Object.hasOwn(value, "deviceId") || typeof value.deviceId !== "string" || value.deviceId.trim().length === 0) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-011",
+      "TM-COMPOSITION-011",
       "Camera selection must be default, front, back, or an object with one non-empty deviceId."
     );
   }
@@ -1596,7 +1596,7 @@ function copyCameraSelection(selection) {
 function canonicalCameraDevices(value) {
   if (!Array.isArray(value)) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-012",
+      "TM-COMPOSITION-012",
       "Camera device enumeration returned an invalid result."
     );
   }
@@ -1617,31 +1617,31 @@ function canonicalCameraDevices(value) {
 function validateFiles(input, createFile) {
   if (!Array.isArray(input.files) || input.files.length !== 3) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-002",
+      "TM-COMPOSITION-002",
       "A pose model must contain model.json, metadata.json, and exactly one weights .bin file."
     );
   }
   const files = /* @__PURE__ */ new Map();
   for (const candidate of input.files) {
     if (!isRecord(candidate) || typeof candidate.path !== "string" || candidate.path.length === 0) {
-      throw compositionError("TMPOSE-COMPOSITION-002", "Pose model file path is invalid.");
+      throw compositionError("TM-COMPOSITION-002", "Pose model file path is invalid.");
     }
     const path = candidate.path;
     if (path.includes("/") || path.includes("\\") || files.has(path)) {
       throw compositionError(
-        "TMPOSE-COMPOSITION-002",
+        "TM-COMPOSITION-002",
         `Pose model file path must be a unique root filename: ${path}`
       );
     }
     const validName = path === "model.json" || path === "metadata.json" || path.endsWith(".bin");
     if (!validName) {
-      throw compositionError("TMPOSE-COMPOSITION-002", `Unsupported pose model file: ${path}`);
+      throw compositionError("TM-COMPOSITION-002", `Unsupported pose model file: ${path}`);
     }
     const mimeType = path.endsWith(".json") ? "application/json" : "application/octet-stream";
     const bytes = copyBytes(candidate.bytes, path);
     const file = createFile(bytes, path, mimeType);
     if (!isRecord(file) || file.name !== path) {
-      throw compositionError("TMPOSE-COMPOSITION-003", `File factory returned an invalid ${path}.`);
+      throw compositionError("TM-COMPOSITION-003", `File factory returned an invalid ${path}.`);
     }
     files.set(path, { file, bytes });
   }
@@ -1650,7 +1650,7 @@ function validateFiles(input, createFile) {
   const weights = [...files.entries()].filter(([path]) => path.endsWith(".bin"));
   if (!model || !metadata || weights.length !== 1) {
     throw compositionError(
-      "TMPOSE-COMPOSITION-002",
+      "TM-COMPOSITION-002",
       "A pose model must contain model.json, metadata.json, and exactly one weights .bin file."
     );
   }
@@ -1675,8 +1675,8 @@ function sameBytes(first, second) {
 function sameValidatedFiles(first, second) {
   return first.weights.name === second.weights.name && sameBytes(first.sourceBytes.model, second.sourceBytes.model) && sameBytes(first.sourceBytes.weights, second.sourceBytes.weights) && sameBytes(first.sourceBytes.metadata, second.sourceBytes.metadata);
 }
-function createTMPoseComposition(options) {
-  if (!isRecord(options)) throw new TypeError("TMPose composition options must be an object.");
+function createTMComposition(options) {
+  if (!isRecord(options)) throw new TypeError("TM composition options must be an object.");
   const runtime = validateRuntime(options.runtime);
   const createFile = options.createFile ?? defaultCreateFile;
   if (typeof createFile !== "function") throw new TypeError("createFile must be a function.");
@@ -1687,7 +1687,7 @@ function createTMPoseComposition(options) {
     options.parallelModelInitialization
   );
   const accumulatedPoseListeners = /* @__PURE__ */ new Set();
-  const extension = new TMPoseExtension(
+  const extension = new TMExtension(
     { temporalPoseScoring: true, accumulatedPoseEvents: true, poseOverlay: true },
     {
       runtime,
@@ -1719,7 +1719,7 @@ function createTMPoseComposition(options) {
   let latestPendingRequest = null;
   function ensureActive() {
     if (released) {
-      throw compositionError("TMPOSE-COMPOSITION-007", "TMPose composition has been released.");
+      throw compositionError("TM-COMPOSITION-007", "TM composition has been released.");
     }
   }
   function nextVersion(name2) {
@@ -1783,7 +1783,7 @@ function createTMPoseComposition(options) {
         if (!classifier || !poseNet || classifier === poseNet) {
           errors.push(
             compositionError(
-              "TMPOSE-COMPOSITION-009",
+              "TM-COMPOSITION-009",
               "Loaded pose model does not expose distinct disposable classifier and PoseNet resources."
             )
           );
@@ -1794,7 +1794,7 @@ function createTMPoseComposition(options) {
         if (!legacy) {
           errors.push(
             compositionError(
-              "TMPOSE-COMPOSITION-009",
+              "TM-COMPOSITION-009",
               "Loaded pose model does not expose a complete disposal contract."
             )
           );
@@ -1809,8 +1809,8 @@ function createTMPoseComposition(options) {
       }
       if (errors.length > 0) {
         throw aggregateCompositionError(
-          "TMPOSE-COMPOSITION-009",
-          "TMPose could not completely dispose a loaded pose model.",
+          "TM-COMPOSITION-009",
+          "TM could not completely dispose a loaded pose model.",
           errors
         );
       }
@@ -1875,8 +1875,8 @@ function createTMPoseComposition(options) {
     if (!isRecord(loaded)) {
       if (requestWasCancelled(request)) throw abortError(request.name);
       throw compositionError(
-        "TMPOSE-COMPOSITION-004",
-        `TMPose failed to load model ${request.name}.`
+        "TM-COMPOSITION-004",
+        `TM failed to load model ${request.name}.`
       );
     }
     const model = loaded;
@@ -1988,7 +1988,7 @@ function createTMPoseComposition(options) {
       try {
         ensureActive();
         if (!isRecord(input)) {
-          throw compositionError("TMPOSE-COMPOSITION-001", "Pose model input must be an object.");
+          throw compositionError("TM-COMPOSITION-001", "Pose model input must be an object.");
         }
         name2 = requireName(input.name);
         ({ signal } = validateRegistrationOptions(registrationOptions));
@@ -1996,7 +1996,7 @@ function createTMPoseComposition(options) {
         files = validateFiles(input, createFile);
         if (activeName === name2 && extension.isRecognizing()) {
           throw compositionError(
-            "TMPOSE-COMPOSITION-005",
+            "TM-COMPOSITION-005",
             `Stop recognition before replacing active pose model ${name2}.`
           );
         }
@@ -2017,13 +2017,13 @@ function createTMPoseComposition(options) {
       const entry = models.get(normalizedName);
       if (!entry) {
         throw compositionError(
-          "TMPOSE-COMPOSITION-006",
+          "TM-COMPOSITION-006",
           `Pose model is not registered: ${normalizedName}`
         );
       }
       if (extension.isRecognizing() && activeName !== normalizedName) {
         throw compositionError(
-          "TMPOSE-COMPOSITION-005",
+          "TM-COMPOSITION-005",
           "Stop recognition before changing the active pose model."
         );
       }
@@ -2194,7 +2194,7 @@ function createTMPoseComposition(options) {
       } catch (error) {
         if (released) ensureActive();
         const wrapped = compositionError(
-          "TMPOSE-COMPOSITION-012",
+          "TM-COMPOSITION-012",
           "Camera device enumeration is unavailable."
         );
         Object.defineProperty(wrapped, "cause", { value: error });
@@ -2249,7 +2249,7 @@ function createTMPoseComposition(options) {
     async startRecognition() {
       ensureActive();
       if (!activeName) {
-        throw compositionError("TMPOSE-COMPOSITION-006", "Activate a pose model first.");
+        throw compositionError("TM-COMPOSITION-006", "Activate a pose model first.");
       }
       await extension.startRecognition();
     },
@@ -2294,7 +2294,7 @@ function createTMPoseComposition(options) {
       ensureActive();
       if (typeof listener !== "function") {
         throw compositionError(
-          "TMPOSE-COMPOSITION-008",
+          "TM-COMPOSITION-008",
           "Accumulated pose listener must be a function."
         );
       }
@@ -2310,5 +2310,5 @@ function createTMPoseComposition(options) {
   return Object.freeze(composition);
 }
 export {
-  createTMPoseComposition
+  createTMComposition
 };

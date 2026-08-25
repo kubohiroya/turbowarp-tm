@@ -4,7 +4,7 @@ import {
   BROWSER_RUNTIME_URL,
   DOCS_URI,
   initializeCameraReadbackContext,
-  TMPoseExtension,
+  TMExtension,
   VERSION
 } from '../src/extension.js';
 import packageMetadata from '../package.json' with {type: 'json'};
@@ -133,16 +133,16 @@ describe('initializeCameraReadbackContext', () => {
   });
 });
 
-describe('TMPoseExtension', () => {
+describe('TMExtension', () => {
   it('exposes the expected extension ID and blocks', () => {
-    const info = new TMPoseExtension().getInfo() as {
+    const info = new TMExtension().getInfo() as {
       id: string;
       docsURI: string;
       blockIconURI: string;
       blocks: Array<{opcode: string}>;
       menus: {cameraMenu: {items: string}};
     };
-    expect(info.id).toBe('tmpose');
+    expect(info.id).toBe('kubohiroyatm');
     expect(info.docsURI).toBe(DOCS_URI);
     expect(info.docsURI).toBe('https://kubohiroya.github.io/turbowarp-tm/');
     expect(info.blockIconURI).toBe(BLOCK_ICON_URI);
@@ -150,7 +150,7 @@ describe('TMPoseExtension', () => {
     expect(iconSvg).toContain('viewBox="0 0 64 64"');
     expect(iconSvg).toContain('<circle cx="32" cy="18" r="5"/>');
     expect(iconSvg).not.toContain('<rect');
-    expect(new TMPoseExtension().versionReporter()).toBe(VERSION);
+    expect(new TMExtension().versionReporter()).toBe(VERSION);
     expect(VERSION).toBe(`${packageMetadata.version}-typescript`);
     expect(info.blocks).toHaveLength(39);
     const opcodes = info.blocks.map((block) => block.opcode);
@@ -168,7 +168,7 @@ describe('TMPoseExtension', () => {
       'isPredicting',
       'firstPredictMsReporter'
     ]));
-    const extension = new TMPoseExtension() as Record<string, unknown>;
+    const extension = new TMExtension() as Record<string, unknown>;
     expect(extension.startPredict).toBeUndefined();
     expect(extension.stopPredict).toBeUndefined();
     expect(extension.isPredicting).toBeUndefined();
@@ -177,7 +177,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('exposes accumulated pose blocks only when the feature flag is enabled', () => {
-    const info = new TMPoseExtension({
+    const info = new TMExtension({
       temporalPoseScoring: true,
       poseOverlay: false
     }).getInfo() as {
@@ -195,10 +195,10 @@ describe('TMPoseExtension', () => {
   });
 
   it('exposes pose overlay blocks by default and can disable them with the feature flag', () => {
-    const disabled = new TMPoseExtension({poseOverlay: false}).getInfo() as {
+    const disabled = new TMExtension({poseOverlay: false}).getInfo() as {
       blocks: Array<{opcode: string}>;
     };
-    const enabled = new TMPoseExtension().getInfo() as {
+    const enabled = new TMExtension().getInfo() as {
       blocks: Array<{opcode: string}>;
       menus: {
         poseKeypointMenu: {items: Array<{value: string}>};
@@ -224,11 +224,11 @@ describe('TMPoseExtension', () => {
   });
 
   it('reports accumulated pose event capability only when both feature flags are enabled', () => {
-    expect(new TMPoseExtension().supportsAccumulatedPoseEvents()).toBe(false);
-    expect(new TMPoseExtension({
+    expect(new TMExtension().supportsAccumulatedPoseEvents()).toBe(false);
+    expect(new TMExtension({
       temporalPoseScoring: true
     }).supportsAccumulatedPoseEvents()).toBe(false);
-    expect(new TMPoseExtension({
+    expect(new TMExtension({
       temporalPoseScoring: true,
       accumulatedPoseEvents: true
     }).supportsAccumulatedPoseEvents()).toBe(true);
@@ -237,7 +237,7 @@ describe('TMPoseExtension', () => {
   it('emits versioned events only when the accumulated pose name changes', () => {
     const emit = vi.fn();
     (Scratch as any).vm = {runtime: {emit}};
-    const extension = new TMPoseExtension({
+    const extension = new TMExtension({
       temporalPoseScoring: true,
       accumulatedPoseEvents: true
     });
@@ -258,7 +258,7 @@ describe('TMPoseExtension', () => {
     ], 3000);
 
     expect(emit).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenNthCalledWith(1, 'TMPOSE_ACCUMULATED_POSE_CHANGED', {
+    expect(emit).toHaveBeenNthCalledWith(1, 'TM_ACCUMULATED_POSE_CHANGED', {
       version: 2,
       poseName: 'jump',
       previousPoseName: '',
@@ -266,7 +266,7 @@ describe('TMPoseExtension', () => {
       reason: 'recognition',
       timestamp: 100
     });
-    expect(emit).toHaveBeenNthCalledWith(2, 'TMPOSE_ACCUMULATED_POSE_CHANGED', {
+    expect(emit).toHaveBeenNthCalledWith(2, 'TM_ACCUMULATED_POSE_CHANGED', {
       version: 2,
       poseName: 'stand',
       previousPoseName: 'jump',
@@ -279,7 +279,7 @@ describe('TMPoseExtension', () => {
   it('emits one empty transition for reset or stop and does not duplicate it', () => {
     const emit = vi.fn();
     (Scratch as any).vm = {runtime: {emit}};
-    const extension = new TMPoseExtension({
+    const extension = new TMExtension({
       temporalPoseScoring: true,
       accumulatedPoseEvents: true
     });
@@ -289,7 +289,7 @@ describe('TMPoseExtension', () => {
 
     extension.resetAccumulatedPose();
     extension.stopRecognition();
-    expect(emit).toHaveBeenLastCalledWith('TMPOSE_ACCUMULATED_POSE_CHANGED', {
+    expect(emit).toHaveBeenLastCalledWith('TM_ACCUMULATED_POSE_CHANGED', {
       version: 2,
       poseName: '',
       previousPoseName: 'jump',
@@ -302,7 +302,7 @@ describe('TMPoseExtension', () => {
     extension.startAccumulatedPoseSession(1000);
     extension.updateAccumulatedPose([{className: 'stand', probability: 1}], 2000);
     extension.stopCamera();
-    expect(emit).toHaveBeenLastCalledWith('TMPOSE_ACCUMULATED_POSE_CHANGED', {
+    expect(emit).toHaveBeenLastCalledWith('TM_ACCUMULATED_POSE_CHANGED', {
       version: 2,
       poseName: '',
       previousPoseName: 'stand',
@@ -322,12 +322,12 @@ describe('TMPoseExtension', () => {
     await import('../src/index.js');
 
     const registeredExtension = register.mock.calls[0]?.[0];
-    expect(runtime).toHaveProperty('ext_tmpose', registeredExtension);
+    expect(runtime).toHaveProperty('ext_kubohiroyatm', registeredExtension);
     expect(typeof registeredExtension.supportsAccumulatedPoseEvents).toBe('function');
   });
 
   it('accumulates pose scores and decays previous values by elapsed time', () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: 2, DECAY: 0.5});
     extension.startAccumulatedPoseSession(0);
 
@@ -349,7 +349,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('reports an accumulated pose only while its score meets the threshold', () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: 1, DECAY: 0.5});
     extension.setAccumulatedPoseThreshold({THRESHOLD: 0.75});
     extension.startAccumulatedPoseSession(0);
@@ -373,7 +373,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('reports the unrounded accumulated score used by threshold selection', () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: 1, DECAY: 1});
     extension.setAccumulatedPoseThreshold({THRESHOLD: 0.5});
     extension.startAccumulatedPoseSession(0);
@@ -385,8 +385,8 @@ describe('TMPoseExtension', () => {
   });
 
   it('normalizes accumulation by elapsed time across prediction rates', () => {
-    const lowFps = new TMPoseExtension({temporalPoseScoring: true});
-    const highFps = new TMPoseExtension({temporalPoseScoring: true});
+    const lowFps = new TMExtension({temporalPoseScoring: true});
+    const highFps = new TMExtension({temporalPoseScoring: true});
     for (const extension of [lowFps, highFps]) {
       extension.setAccumulatedPoseParameters({ACCUMULATION: 2, DECAY: 1});
       extension.startAccumulatedPoseSession(0);
@@ -404,7 +404,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('pauses accumulation and decay while the document is hidden', () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: 1, DECAY: 0.5});
     extension.startAccumulatedPoseSession(0);
     extension.recognizing = true;
@@ -426,7 +426,7 @@ describe('TMPoseExtension', () => {
 
   it('supports accumulated scoring when document is unavailable', () => {
     vi.stubGlobal('document', undefined);
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: 1, DECAY: 1});
     extension.startAccumulatedPoseSession(0);
 
@@ -436,7 +436,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('applies decay changes made during recognition to the next session', async () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.cameraRunning = true;
     extension.model = {};
     extension.modelURL = 'https://example.com/model/';
@@ -454,7 +454,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('normalizes accumulated pose coefficients and resets temporal state', () => {
-    const extension = new TMPoseExtension({temporalPoseScoring: true});
+    const extension = new TMExtension({temporalPoseScoring: true});
     extension.setAccumulatedPoseParameters({ACCUMULATION: -2, DECAY: 4});
     expect(extension.accumulationCoefficient).toBe(0);
     expect(extension.decayCoefficient).toBe(1);
@@ -471,13 +471,13 @@ describe('TMPoseExtension', () => {
   });
 
   it('normalizes a model URL with a trailing slash', () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.setModelURL({URL: 'https://example.com/model'});
     expect(extension.modelURL).toBe('https://example.com/model/');
   });
 
   it('switches between pose, image, and audio recognition modes before input startup', () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
 
     extension.setRecognitionMode({MODE: 'card'});
     expect(extension.recognitionModeReporter()).toBe('image');
@@ -499,7 +499,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('requires recognition to stop before changing mode', () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.recognizing = true;
 
     expect(() => extension.setRecognitionMode({MODE: 'image'})).toThrow(
@@ -521,7 +521,7 @@ describe('TMPoseExtension', () => {
     const audioRuntime = {
       load: vi.fn(async () => model)
     };
-    const extension = new TMPoseExtension({}, {audioRuntime});
+    const extension = new TMExtension({}, {audioRuntime});
     const startCamera = vi.spyOn(extension, 'startCamera');
 
     extension.setRecognitionMode({MODE: 'audio'});
@@ -547,7 +547,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('rejects camera startup in audio mode', async () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.setRecognitionMode({MODE: 'audio'});
 
     await expect(extension.startCamera()).rejects.toThrow('Audio mode uses the microphone');
@@ -556,7 +556,7 @@ describe('TMPoseExtension', () => {
   it('finds the Desktop Editor stage wrapper directly', () => {
     const stage = createElement();
     querySelector.mockReturnValueOnce(stage);
-    expect(new TMPoseExtension().findStageElement()).toBe(stage);
+    expect(new TMExtension().findStageElement()).toBe(stage);
   });
 
   it('uses the renderer canvas mount instead of the outer Editor wrapper', () => {
@@ -570,7 +570,7 @@ describe('TMPoseExtension', () => {
     querySelector.mockReturnValue(outerStage);
     querySelectorAll.mockReturnValue([stageCanvas]);
 
-    expect(new TMPoseExtension().findStageElement()).toBe(innerStage);
+    expect(new TMExtension().findStageElement()).toBe(innerStage);
   });
 
   it('finds a Packager stage canvas and prefers a 4:3 candidate', () => {
@@ -580,13 +580,13 @@ describe('TMPoseExtension', () => {
     stage.appendChild(stageCanvas);
     querySelectorAll.mockReturnValue([wide, stageCanvas]);
 
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     expect(extension.findLikelyStageCanvas()).toBe(stageCanvas);
     expect(extension.findStageElement()).toBe(stage);
   });
 
   it('throws an explicit error when no stage can be found', () => {
-    expect(() => new TMPoseExtension().findStageElement()).toThrow(
+    expect(() => new TMExtension().findStageElement()).toThrow(
       'TurboWarp stage element was not found'
     );
   });
@@ -608,7 +608,7 @@ describe('TMPoseExtension', () => {
     querySelector.mockReturnValue(stage);
     querySelectorAll.mockReturnValue([stageCanvas]);
 
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.webcam = {canvas: previewCanvas} as never;
     extension.attachPreviewToStage();
 
@@ -635,7 +635,7 @@ describe('TMPoseExtension', () => {
     querySelector.mockReturnValue(outerStage);
     querySelectorAll.mockReturnValue([stageCanvas]);
 
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.webcam = {canvas: previewCanvas} as never;
     extension.attachPreviewToStage();
 
@@ -647,7 +647,7 @@ describe('TMPoseExtension', () => {
   it('renders a configurable SVG pose overlay with confidence-scaled joints and bones', () => {
     const stage = createElement();
     const canvas = createElement('CANVAS');
-    const extension = new TMPoseExtension({poseOverlay: true});
+    const extension = new TMExtension({poseOverlay: true});
     extension.webcam = {canvas, webcam: {srcObject: null}};
     vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
     extension.attachPreviewToStage();
@@ -730,7 +730,7 @@ describe('TMPoseExtension', () => {
   it('routes estimated PoseNet keypoints into the SVG overlay during recognition', async () => {
     const stage = createElement();
     const canvas = createElement('CANVAS');
-    const extension = new TMPoseExtension({poseOverlay: true});
+    const extension = new TMExtension({poseOverlay: true});
     extension.webcam = {canvas, update: vi.fn()};
     extension.cameraRunning = true;
     extension.recognizing = true;
@@ -763,7 +763,7 @@ describe('TMPoseExtension', () => {
     const stage = createElement();
     const canvas = createElement('CANVAS', {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0});
     stage.appendChild(canvas);
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.previewVisible = true;
     expect(() => extension.validatePreviewAttachment(stage, canvas)).toThrow('zero size');
   });
@@ -774,7 +774,7 @@ describe('TMPoseExtension', () => {
     const stage = createElement('DIV', zero);
     const canvas = createElement('CANVAS', zero);
     stage.appendChild(canvas);
-    expect(() => new TMPoseExtension().validatePreviewAttachment(stage, canvas)).not.toThrow();
+    expect(() => new TMExtension().validatePreviewAttachment(stage, canvas)).not.toThrow();
   });
 
   it('stops MediaStream tracks and rolls back when preview attachment fails', async () => {
@@ -795,7 +795,7 @@ describe('TMPoseExtension', () => {
     vi.stubGlobal('tmImage', {Webcam});
     vi.stubGlobal('tmAudio', {});
 
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     vi.spyOn(extension, 'attachPreviewToStage').mockImplementation(() => {
       throw new Error('stage unavailable');
     });
@@ -814,7 +814,7 @@ describe('TMPoseExtension', () => {
       {kind: 'videoinput', deviceId: 'front-id', label: 'Front Camera'},
       {kind: 'videoinput', deviceId: 'back-id', label: ''}
     ]);
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
 
     await extension.refreshCameraList();
 
@@ -851,7 +851,7 @@ describe('TMPoseExtension', () => {
     enumerateDevices.mockResolvedValue([
       {kind: 'videoinput', deviceId: 'front-id', label: 'Built-in Front Camera'}
     ]);
-    const extension = new TMPoseExtension({}, {runtime: {Webcam} as never});
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
     vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
 
     await extension.setCameraSelection({CAMERA: 'front'});
@@ -888,7 +888,7 @@ describe('TMPoseExtension', () => {
       {kind: 'videoinput', deviceId: 'front-id', label: 'Front Camera'},
       {kind: 'videoinput', deviceId: 'external-id', label: 'External Camera'}
     ]);
-    const extension = new TMPoseExtension({}, {runtime: {Webcam} as never});
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
     vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
     await extension.startCamera();
     const model = {
@@ -941,7 +941,7 @@ describe('TMPoseExtension', () => {
     function Webcam() {
       return webcams.shift();
     }
-    const extension = new TMPoseExtension({}, {runtime: {Webcam} as never});
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
     vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
     await extension.startCamera();
 
@@ -960,7 +960,7 @@ describe('TMPoseExtension', () => {
     const stage = createElement();
     const canvas = createElement('CANVAS');
     stage.appendChild(canvas);
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.webcam = {canvas};
     extension.previewCanvas = canvas;
     extension.previewStageElement = stage;
@@ -975,7 +975,7 @@ describe('TMPoseExtension', () => {
 
   it('keeps mirrored preview as the default and switches display mirroring at runtime', () => {
     const canvas = createElement('CANVAS');
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.previewCanvas = canvas;
 
     extension.updatePreviewStyle();
@@ -997,7 +997,7 @@ describe('TMPoseExtension', () => {
     const stage = createElement();
     const canvas = createElement('CANVAS');
     stage.appendChild(canvas);
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.previewCanvas = canvas;
     extension.previewStageElement = stage;
     extension.setPreviewMirroring({MIRRORING: 'unmirrored'});
@@ -1022,7 +1022,7 @@ describe('TMPoseExtension', () => {
     const Webcam = vi.fn(function () {
       return webcam;
     });
-    const extension = new TMPoseExtension({}, {runtime: {Webcam} as never});
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
     vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
 
     extension.setPreviewMirroring({MIRRORING: 'unmirrored'});
@@ -1037,12 +1037,12 @@ describe('TMPoseExtension', () => {
     vi.stubGlobal('tmPose', {});
     vi.stubGlobal('tmImage', {});
     vi.stubGlobal('tmAudio', {});
-    await new TMPoseExtension().ensureLibrariesLoaded();
+    await new TMExtension().ensureLibrariesLoaded();
     expect((document.head.appendChild as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
   });
 
   it('loads one reviewed browser runtime when TensorFlow and Teachable Machine globals are absent', async () => {
-    const pending = new TMPoseExtension().ensureLibrariesLoaded();
+    const pending = new TMExtension().ensureLibrariesLoaded();
     expect(document.head.appendChild).toHaveBeenCalledOnce();
     expect(scripts).toHaveLength(1);
     expect(scripts[0].src).toBe(BROWSER_RUNTIME_URL);
@@ -1059,7 +1059,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('predicts image-mode labels from the camera frame without pose estimation', async () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     const canvas = createElement('CANVAS');
     const video = createElement('VIDEO');
     const model = {
@@ -1087,7 +1087,7 @@ describe('TMPoseExtension', () => {
   });
 
   it('invalidates an old asynchronous loop generation on camera cleanup', () => {
-    const extension = new TMPoseExtension();
+    const extension = new TMExtension();
     extension.loopGeneration = 3;
     extension.webcam = {webcam: {srcObject: null}};
     extension.cameraRunning = true;

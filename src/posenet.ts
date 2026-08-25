@@ -32,22 +32,22 @@ export type VerifiedPoseNetBundle = Readonly<{
   files: ReadonlyArray<VerifiedPoseNetBundleFile>;
 }>;
 
-export type TMPoseBrowserRuntime = Readonly<{
+export type TMBrowserRuntime = Readonly<{
   Webcam: new (...args: any[]) => unknown;
   loadFromFiles(
     model: unknown,
     weights: unknown,
     metadata: unknown,
-    options?: TMPoseRuntimeLoadOptions
+    options?: TMRuntimeLoadOptions
   ): Promise<unknown>;
 }>;
 
-export type TMPoseRuntimeLoadOptions = Readonly<{
+export type TMRuntimeLoadOptions = Readonly<{
   signal?: AbortSignal;
   parallelModelInitialization?: boolean;
 }>;
 
-export type BundledTMPoseRuntime = TMPoseBrowserRuntime &
+export type BundledTMRuntime = TMBrowserRuntime &
   Readonly<{poseNetManifest: typeof poseNetBundleManifest}>;
 
 type DigestRuntime = Pick<SubtleCrypto, 'digest'>;
@@ -142,24 +142,24 @@ export type PoseNetBundleFileLoader = (
   file: PoseNetBundleManifestFile
 ) => Uint8Array | ArrayBuffer | Promise<Uint8Array | ArrayBuffer>;
 
-export class TMPosePoseNetError extends Error {
+export class PoseNetBundleError extends Error {
   readonly code: string;
 
   constructor(code: string, message: string) {
     super(message);
-    this.name = 'TMPosePoseNetError';
+    this.name = 'PoseNetBundleError';
     this.code = code;
   }
 }
 
 function fail(code: string, message: string): never {
-  throw new TMPosePoseNetError(code, message);
+  throw new PoseNetBundleError(code, message);
 }
 
 function abortError(): Error {
-  const error = new Error('TMPose PoseNet model loading was cancelled.');
+  const error = new Error('TM PoseNet model loading was cancelled.');
   error.name = 'AbortError';
-  Object.defineProperty(error, 'code', {value: 'TMPOSE-POSENET-ABORTED'});
+  Object.defineProperty(error, 'code', {value: 'TM-POSENET-ABORTED'});
   return error;
 }
 
@@ -174,12 +174,12 @@ function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
 function requireBytes(value: unknown, label: string): Uint8Array {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  return fail('TMPOSE-POSENET-ASSET-001', `${label} must be a Uint8Array or ArrayBuffer.`);
+  return fail('TM-POSENET-ASSET-001', `${label} must be a Uint8Array or ArrayBuffer.`);
 }
 
 function requireSubtleCrypto(value: unknown): DigestRuntime {
   if (!isRecord(value) || typeof value.digest !== 'function') {
-    return fail('TMPOSE-POSENET-ASSET-001', 'Web Crypto subtle.digest is required.');
+    return fail('TM-POSENET-ASSET-001', 'Web Crypto subtle.digest is required.');
   }
   return value as unknown as DigestRuntime;
 }
@@ -193,7 +193,7 @@ async function sha256(bytes: Uint8Array, subtleCrypto: DigestRuntime): Promise<s
 
 function encodeBase64(bytes: Uint8Array): string {
   if (typeof btoa !== 'function') {
-    return fail('TMPOSE-POSENET-ASSET-001', 'Base64 encoding requires btoa.');
+    return fail('TM-POSENET-ASSET-001', 'Base64 encoding requires btoa.');
   }
   const chunks: string[] = [];
   const chunkSize = 32 * 1024;
@@ -234,22 +234,22 @@ function decodeBase64(value: unknown, label: string, maxBytes: number): Uint8Arr
     value.length % 4 !== 0 ||
     !hasValidBase64Alphabet(value)
   ) {
-    return fail('TMPOSE-POSENET-ASSET-001', `${label} must be bounded padded Base64.`);
+    return fail('TM-POSENET-ASSET-001', `${label} must be bounded padded Base64.`);
   }
   if (typeof atob !== 'function') {
-    return fail('TMPOSE-POSENET-ASSET-001', 'Base64 decoding requires atob.');
+    return fail('TM-POSENET-ASSET-001', 'Base64 decoding requires atob.');
   }
   let decoded: string;
   try {
     decoded = atob(value);
   } catch (error) {
     return fail(
-      'TMPOSE-POSENET-ASSET-001',
+      'TM-POSENET-ASSET-001',
       `${label} is invalid Base64: ${error instanceof Error ? error.message : String(error)}`
     );
   }
   if (decoded.length > maxBytes) {
-    return fail('TMPOSE-POSENET-ASSET-004', `${label} exceeds its decoded byte limit.`);
+    return fail('TM-POSENET-ASSET-004', `${label} exceeds its decoded byte limit.`);
   }
   const bytes = new Uint8Array(decoded.length);
   for (let index = 0; index < decoded.length; index += 1) {
@@ -266,7 +266,7 @@ function canonicalProjectBundle(descriptor: unknown): PoseNetProjectBundle {
     !Array.isArray(descriptor.files) ||
     descriptor.files.length !== expectedFiles.length
   ) {
-    return fail('TMPOSE-POSENET-ASSET-001', 'PoseNet project bundle format is invalid.');
+    return fail('TM-POSENET-ASSET-001', 'PoseNet project bundle format is invalid.');
   }
   const files = expectedFiles.map((expected): PoseNetProjectBundleFile => {
     const candidate = descriptor.files.find(
@@ -281,7 +281,7 @@ function canonicalProjectBundle(descriptor: unknown): PoseNetProjectBundle {
       typeof candidate.data !== 'string'
     ) {
       return fail(
-        'TMPOSE-POSENET-ASSET-001',
+        'TM-POSENET-ASSET-001',
         `PoseNet project file metadata is invalid: ${expected.path}.`
       );
     }
@@ -313,7 +313,7 @@ function decodeProjectBundle(
       );
       if (bytes.byteLength !== candidate.size) {
         return fail(
-          'TMPOSE-POSENET-ASSET-004',
+          'TM-POSENET-ASSET-004',
           `PoseNet project file size does not match: ${expected.path}.`
         );
       }
@@ -332,18 +332,18 @@ export async function verifyPoseNetBundle(
   throwIfAborted(signal);
   const digestRuntime = requireSubtleCrypto(subtleCrypto);
   if (!Array.isArray(files) || files.length !== expectedFiles.length) {
-    return fail('TMPOSE-POSENET-ASSET-004', 'PoseNet bundle must contain exactly three files.');
+    return fail('TM-POSENET-ASSET-004', 'PoseNet bundle must contain exactly three files.');
   }
   let totalBytes = 0;
   const candidates = expectedFiles.map((expected) => {
     const candidate = files.find((file) => isRecord(file) && file.path === expected.path);
     if (!candidate) {
-      return fail('TMPOSE-POSENET-ASSET-002', `PoseNet file is missing: ${expected.path}.`);
+      return fail('TM-POSENET-ASSET-002', `PoseNet file is missing: ${expected.path}.`);
     }
     const bytes = requireBytes(candidate.bytes, `PoseNet file ${expected.path}`);
     if (bytes.byteLength !== expected.size) {
       return fail(
-        'TMPOSE-POSENET-ASSET-004',
+        'TM-POSENET-ASSET-004',
         `PoseNet file size is invalid: ${expected.path}.`
       );
     }
@@ -351,7 +351,7 @@ export async function verifyPoseNetBundle(
     return {expected, bytes};
   });
   if (totalBytes > poseNetBundleManifest.limits.maxTotalBytes) {
-    return fail('TMPOSE-POSENET-ASSET-004', 'PoseNet bundle exceeds its total byte limit.');
+    return fail('TM-POSENET-ASSET-004', 'PoseNet bundle exceeds its total byte limit.');
   }
   const digests = await Promise.all(
     candidates.map(async ({bytes}) => {
@@ -363,7 +363,7 @@ export async function verifyPoseNetBundle(
   const verifiedFiles = candidates.map(({expected, bytes}, index) => {
     if (digests[index] !== expected.sha256) {
       return fail(
-        'TMPOSE-POSENET-ASSET-003',
+        'TM-POSENET-ASSET-003',
         `PoseNet file integrity mismatch: ${expected.path}.`
       );
     }
@@ -376,14 +376,14 @@ export async function verifyPoseNetBundle(
   });
   const jsonFile = verifiedFiles.find(({path}) => path === 'model-stride16.json');
   if (!jsonFile) {
-    return fail('TMPOSE-POSENET-ASSET-002', 'PoseNet model JSON is missing.');
+    return fail('TM-POSENET-ASSET-002', 'PoseNet model JSON is missing.');
   }
   let modelJson: unknown;
   try {
     modelJson = JSON.parse(new TextDecoder().decode(jsonFile.bytes));
   } catch (error) {
     return fail(
-      'TMPOSE-POSENET-ASSET-001',
+      'TM-POSENET-ASSET-001',
       `PoseNet model JSON is invalid: ${error instanceof Error ? error.message : String(error)}`
     );
   }
@@ -402,7 +402,7 @@ export async function verifyPoseNetBundle(
     expectedShardPaths.some((path) => !manifestPaths.includes(path))
   ) {
     return fail(
-      'TMPOSE-POSENET-ASSET-001',
+      'TM-POSENET-ASSET-001',
       'PoseNet model JSON references unexpected weight shards.'
     );
   }
@@ -480,18 +480,18 @@ export async function validatePoseNetProjectBundle(
   return canonicalProjectBundle(descriptor);
 }
 
-function validateRuntime(value: unknown): TMPoseBrowserRuntime {
+function validateRuntime(value: unknown): TMBrowserRuntime {
   if (
     !isRecord(value) ||
     typeof value.Webcam !== 'function' ||
     typeof value.loadFromFiles !== 'function'
   ) {
     return fail(
-      'TMPOSE-POSENET-RUNTIME-001',
-      'TMPose runtime must provide Webcam and loadFromFiles.'
+      'TM-POSENET-RUNTIME-001',
+      'TM runtime must provide Webcam and loadFromFiles.'
     );
   }
-  return value as unknown as TMPoseBrowserRuntime;
+  return value as unknown as TMBrowserRuntime;
 }
 
 function requestUrl(input: unknown, baseUrl: string): string | null {
@@ -522,12 +522,12 @@ async function disposeRuntimeModel(value: unknown): Promise<void> {
   );
   const errors = results.flatMap((result) => result.status === 'rejected' ? [result.reason] : []);
   if (errors.length > 0) {
-    throw new AggregateError(errors, 'TMPose could not dispose a cancelled runtime model.');
+    throw new AggregateError(errors, 'TM could not dispose a cancelled runtime model.');
   }
 }
 
-export function createBundledTMPoseRuntime(options: {
-  runtime: TMPoseBrowserRuntime;
+export function createBundledTMRuntime(options: {
+  runtime: TMBrowserRuntime;
   globalObject?: RuntimeGlobal;
   files?: ReadonlyArray<PoseNetBundleFileInput>;
   loadFiles?: () =>
@@ -536,7 +536,7 @@ export function createBundledTMPoseRuntime(options: {
   projectBundle?: PoseNetProjectBundle;
   subtleCrypto?: DigestRuntime;
   parallelModelInitialization?: boolean;
-}): BundledTMPoseRuntime {
+}): BundledTMRuntime {
   if (!isRecord(options)) throw new TypeError('PoseNet runtime options are required.');
   if (
     options.parallelModelInitialization !== undefined &&
@@ -548,7 +548,7 @@ export function createBundledTMPoseRuntime(options: {
   const globalObject = (options.globalObject ?? globalThis) as RuntimeGlobal;
   const ResponseConstructor = globalObject.Response ?? globalThis.Response;
   if (typeof ResponseConstructor !== 'function') {
-    return fail('TMPOSE-POSENET-RUNTIME-001', 'Response constructor is required.');
+    return fail('TM-POSENET-RUNTIME-001', 'Response constructor is required.');
   }
   const supplyCount = [options.files, options.loadFiles, options.projectBundle].filter(
     (value) => value !== undefined
@@ -577,13 +577,13 @@ export function createBundledTMPoseRuntime(options: {
     model: unknown,
     weights: unknown,
     metadata: unknown,
-    loadOptions: TMPoseRuntimeLoadOptions = {}
+    loadOptions: TMRuntimeLoadOptions = {}
   ): Promise<unknown> {
     const task = async () => {
       throwIfAborted(loadOptions.signal);
       const previousFetch = globalObject.fetch;
       if (typeof previousFetch !== 'function') {
-        return fail('TMPOSE-POSENET-RUNTIME-001', 'Browser fetch is required.');
+        return fail('TM-POSENET-RUNTIME-001', 'Browser fetch is required.');
       }
       const baseUrl = globalObject.location?.href ?? 'http://localhost/';
       const localFetch = async (input: unknown): Promise<Response> => {
@@ -593,7 +593,7 @@ export function createBundledTMPoseRuntime(options: {
         const file = url ? byUrl.get(url) : undefined;
         if (!file) {
           return fail(
-            'TMPOSE-POSENET-FETCH-001',
+            'TM-POSENET-FETCH-001',
             `Unexpected PoseNet request: ${url ?? '(invalid)'}.`
           );
         }
@@ -606,7 +606,7 @@ export function createBundledTMPoseRuntime(options: {
         globalObject.fetch = localFetch;
       } catch (error) {
         return fail(
-          'TMPOSE-POSENET-FETCH-001',
+          'TM-POSENET-FETCH-001',
           `PoseNet fetch interception is unavailable: ${
             error instanceof Error ? error.message : String(error)
           }`
@@ -650,7 +650,7 @@ export function createBundledTMPoseRuntime(options: {
           if (runtimeError || disposalError) {
             throw new AggregateError(
               [cancellation, runtimeError, disposalError].filter((error) => error !== undefined),
-              'TMPose cancellation encountered a runtime or disposal failure.'
+              'TM cancellation encountered a runtime or disposal failure.'
             );
           }
           throw cancellation;
