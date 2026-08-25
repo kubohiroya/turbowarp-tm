@@ -1,9 +1,9 @@
 import { type FeatureFlags } from './config/feature-flags.js';
 import { type PoseOverlayConfidenceProperty } from './pose-overlay.js';
-export declare const EXTENSION_ID = "tmpose";
+export declare const EXTENSION_ID = "kubohiroyatm";
 export declare const VERSION: string;
 export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tm/";
-export declare const ACCUMULATED_POSE_CHANGED_EVENT = "TMPOSE_ACCUMULATED_POSE_CHANGED";
+export declare const ACCUMULATED_POSE_CHANGED_EVENT = "TM_ACCUMULATED_POSE_CHANGED";
 export declare const BLOCK_ICON_URI: string;
 export type RecognitionMode = 'pose' | 'image' | 'audio';
 export interface TeachableMachineRuntime {
@@ -14,8 +14,8 @@ export interface TeachableMachineRuntime {
 export interface TeachableMachineAudioRuntime {
     load(modelURL: string, metadataURL: string): Promise<any>;
 }
-export type TMPoseRuntime = TeachableMachineRuntime;
-export interface TMPoseExtensionDependencies {
+export type TMRuntime = TeachableMachineRuntime;
+export interface TMExtensionDependencies {
     runtime?: TeachableMachineRuntime;
     poseRuntime?: TeachableMachineRuntime;
     imageRuntime?: TeachableMachineRuntime;
@@ -35,14 +35,14 @@ export declare const BROWSER_RUNTIME_URL: string;
 export declare function loadScript(src: string): Promise<void>;
 /**
  * Initialize the camera canvas before Teachable Machine or TensorFlow.js requests its context.
- * The legacy backend parameter remains accepted for compatibility, but TMPose intentionally uses
+ * The legacy backend parameter remains accepted for compatibility, but TM intentionally uses
  * the browser's normal Canvas2D context. Its one-draw/one-read camera path does not demonstrate a
  * repeatable end-to-end benefit from forcing a readback-optimized context.
  */
 export declare function initializeCameraReadbackContext(canvas: unknown, _tensorflowBackend?: string | null): CanvasRenderingContext2D;
-export declare class TMPoseExtension {
+export declare class TMExtension {
     [key: string]: any;
-    constructor(featureFlags?: Partial<FeatureFlags>, dependencies?: TMPoseExtensionDependencies);
+    constructor(featureFlags?: Partial<FeatureFlags>, dependencies?: TMExtensionDependencies);
     getInfo(): {
         id: string;
         name: any;

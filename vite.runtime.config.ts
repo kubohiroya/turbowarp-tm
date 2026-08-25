@@ -12,7 +12,7 @@ export default defineConfig({
     lib: {
       entry: 'src/runtime.ts',
       formats: ['iife'],
-      name: 'TMPoseBrowserRuntime',
+      name: 'TMBrowserRuntime',
       fileName: () => 'runtime.js'
     },
     minify: 'esbuild',

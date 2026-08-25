@@ -1,11 +1,11 @@
-import {TMPoseExtension} from './extension.js';
+import {TMExtension} from './extension.js';
 
 if (!Scratch.extensions.unsandboxed) {
-  throw new Error('TMPose must run without the extension sandbox.');
+  throw new Error('TM must run without the extension sandbox.');
 }
 
-const extension = new TMPoseExtension();
+const extension = new TMExtension();
 Scratch.extensions.register(extension);
 if (Scratch.vm?.runtime) {
-  Scratch.vm.runtime.ext_tmpose = extension;
+  Scratch.vm.runtime.ext_kubohiroyatm = extension;
 }

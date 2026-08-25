@@ -34,7 +34,7 @@ function dependencies(overrides: Partial<RuntimeModelLoaderDependencies> = {}) {
   return {value, classifier, poseNet, metadata, combined};
 }
 
-describe('cancellable TMPose runtime model loader', () => {
+describe('cancellable TM runtime model loader', () => {
   it('does not start any model phase when already cancelled', async () => {
     const setup = dependencies();
     const controller = new AbortController();
@@ -47,7 +47,7 @@ describe('cancellable TMPose runtime model loader', () => {
         metadataFile,
         {signal: controller.signal}
       )
-    ).rejects.toMatchObject({name: 'AbortError', code: 'TMPOSE-RUNTIME-ABORTED'});
+    ).rejects.toMatchObject({name: 'AbortError', code: 'TM-RUNTIME-ABORTED'});
     expect(setup.value.ready).not.toHaveBeenCalled();
     expect(setup.value.loadClassifier).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe('cancellable TMPose runtime model loader', () => {
 
     controller.abort('scene-skipped');
     ready.resolve();
-    await expect(loading).rejects.toMatchObject({code: 'TMPOSE-RUNTIME-ABORTED'});
+    await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.value.loadClassifier).not.toHaveBeenCalled();
   });
 
@@ -85,7 +85,7 @@ describe('cancellable TMPose runtime model loader', () => {
     await vi.waitFor(() => expect(setup.value.loadClassifier).toHaveBeenCalledOnce());
     controller.abort('superseded');
     classifierGate.resolve(setup.classifier);
-    await expect(loading).rejects.toMatchObject({code: 'TMPOSE-RUNTIME-ABORTED'});
+    await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.classifier.dispose).toHaveBeenCalledOnce();
     expect(setup.value.loadMetadata).not.toHaveBeenCalled();
     expect(setup.value.loadPoseNet).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('cancellable TMPose runtime model loader', () => {
     await vi.waitFor(() => expect(setup.value.loadMetadata).toHaveBeenCalledOnce());
     controller.abort('superseded');
     metadataGate.resolve(setup.metadata);
-    await expect(loading).rejects.toMatchObject({code: 'TMPOSE-RUNTIME-ABORTED'});
+    await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.classifier.dispose).toHaveBeenCalledOnce();
     expect(setup.value.loadPoseNet).not.toHaveBeenCalled();
   });
@@ -128,7 +128,7 @@ describe('cancellable TMPose runtime model loader', () => {
     await vi.waitFor(() => expect(setup.value.loadPoseNet).toHaveBeenCalledOnce());
     controller.abort('scene-skipped');
     poseNetGate.resolve(setup.poseNet);
-    await expect(loading).rejects.toMatchObject({code: 'TMPOSE-RUNTIME-ABORTED'});
+    await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.classifier.dispose).toHaveBeenCalledOnce();
     expect(setup.poseNet.dispose).toHaveBeenCalledOnce();
     expect(setup.value.createModel).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('cancellable TMPose runtime model loader', () => {
     classifierGate.resolve(setup.classifier);
     metadataGate.resolve(setup.metadata);
     poseNetGate.resolve(setup.poseNet);
-    await expect(loading).rejects.toMatchObject({code: 'TMPOSE-RUNTIME-ABORTED'});
+    await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.classifier.dispose).toHaveBeenCalledOnce();
     expect(setup.poseNet.dispose).toHaveBeenCalledOnce();
   });

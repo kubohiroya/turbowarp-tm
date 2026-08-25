@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {createTMPoseComposition} from '../src/composition.js';
+import {createTMComposition} from '../src/composition.js';
 
 type TestFile = File & {bytes: Uint8Array};
 
@@ -119,12 +119,12 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('TMPose composition API', () => {
+describe('TM composition API', () => {
   it('copies and loads the three canonical files without registering blocks', async () => {
     const loaded = model();
     const loadFromFiles = vi.fn(async () => loaded);
     const inputFiles = files();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile
     });
@@ -148,7 +148,7 @@ describe('TMPose composition API', () => {
 
   it('rejects malformed model sets before invoking the runtime loader', async () => {
     const loadFromFiles = vi.fn();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile
     });
@@ -185,15 +185,15 @@ describe('TMPose composition API', () => {
       await expect(composition.registerPoseModel(input)).rejects.toThrow();
     }
     expect(loadFromFiles).not.toHaveBeenCalled();
-    expect(() => createTMPoseComposition({runtime: {} as never})).toThrow(/loadFromFiles/u);
+    expect(() => createTMComposition({runtime: {} as never})).toThrow(/loadFromFiles/u);
     expect(() =>
-      createTMPoseComposition({
+      createTMComposition({
         runtime: {Webcam: class {}, loadFromFiles},
         modelInitializationPolicy: 'invalid' as never
       })
     ).toThrow(/modelInitializationPolicy/u);
     expect(() =>
-      createTMPoseComposition({
+      createTMComposition({
         runtime: {Webcam: class {}, loadFromFiles},
         parallelModelInitialization: 'yes' as never
       })
@@ -203,14 +203,14 @@ describe('TMPose composition API', () => {
         {name: 'Options', files: files()},
         {signal: {} as AbortSignal}
       )
-    ).rejects.toMatchObject({code: 'TMPOSE-COMPOSITION-015'});
+    ).rejects.toMatchObject({code: 'TM-COMPOSITION-015'});
   });
 
   it('cancels a registration before the runtime loader starts', async () => {
     const loadFromFiles = vi.fn();
     const controller = new AbortController();
     controller.abort('scene-skipped');
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile
     });
@@ -222,7 +222,7 @@ describe('TMPose composition API', () => {
 
     await expect(registration).rejects.toMatchObject({
       name: 'AbortError',
-      code: 'TMPOSE-COMPOSITION-015'
+      code: 'TM-COMPOSITION-015'
     });
     expect(loadFromFiles).not.toHaveBeenCalled();
     expect(composition.isPoseModelRegistered('Cancelled')).toBe(false);
@@ -232,7 +232,7 @@ describe('TMPose composition API', () => {
     const pendingLoad = deferred<ReturnType<typeof model>>();
     const loadFromFiles = vi.fn(() => pendingLoad.promise);
     const controller = new AbortController();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile
     });
@@ -256,7 +256,7 @@ describe('TMPose composition API', () => {
   it('forwards latency-first parallel initialization only when explicitly enabled', async () => {
     const loaded = model();
     const loadFromFiles = vi.fn(async () => loaded);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile,
       parallelModelInitialization: true
@@ -276,7 +276,7 @@ describe('TMPose composition API', () => {
       .fn()
       .mockImplementationOnce(() => firstLoad.promise)
       .mockImplementationOnce(() => latestLoad.promise);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile,
       modelInitializationPolicy: 'latest-needed'
@@ -311,7 +311,7 @@ describe('TMPose composition API', () => {
   it('deduplicates the same latest-needed model demand before runtime loading', async () => {
     const pendingLoad = deferred<ReturnType<typeof model>>();
     const loadFromFiles = vi.fn(() => pendingLoad.promise);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile,
       modelInitializationPolicy: 'latest-needed'
@@ -339,7 +339,7 @@ describe('TMPose composition API', () => {
   it('settles active and pending latest-needed demands during releaseAll', async () => {
     const activeLoad = deferred<ReturnType<typeof model>>();
     const loadFromFiles = vi.fn(() => activeLoad.promise);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile,
       modelInitializationPolicy: 'latest-needed'
@@ -365,7 +365,7 @@ describe('TMPose composition API', () => {
     const pendingLoad = deferred<ReturnType<typeof model>>();
     const loadFromFiles = vi.fn(() => pendingLoad.promise);
     const controller = new AbortController();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile,
       modelInitializationPolicy: 'latest-needed'
@@ -400,7 +400,7 @@ describe('TMPose composition API', () => {
       update: vi.fn()
     };
     const loadFromFiles = vi.fn(() => modelLoad.promise);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {
         Webcam: vi.fn(function () { return webcam; }) as never,
         loadFromFiles
@@ -429,14 +429,14 @@ describe('TMPose composition API', () => {
   it('caches named models and isolates active state between instances', async () => {
     const firstModels = [model(['first']), model(['second'])];
     const secondModel = model(['isolated']);
-    const first = createTMPoseComposition({
+    const first = createTMComposition({
       runtime: {
         Webcam: class {},
         loadFromFiles: vi.fn(async () => firstModels.shift()!)
       },
       createFile
     });
-    const second = createTMPoseComposition({
+    const second = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => secondModel)},
       createFile
     });
@@ -462,7 +462,7 @@ describe('TMPose composition API', () => {
       .mockImplementationOnce(() => firstPending.promise)
       .mockImplementationOnce(() => secondPending.promise)
       .mockImplementationOnce(() => releasedPending.promise);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles},
       createFile
     });
@@ -497,7 +497,7 @@ describe('TMPose composition API', () => {
 
   it('waits for pending load disposal before releaseAll completes', async () => {
     const pendingLoad = deferred<ReturnType<typeof model>>();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(() => pendingLoad.promise)},
       createFile
     });
@@ -525,7 +525,7 @@ describe('TMPose composition API', () => {
     loaded.model.dispose.mockImplementation(
       (() => classifierDispose.promise) as unknown as () => void
     );
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => loaded)},
       createFile
     });
@@ -561,7 +561,7 @@ describe('TMPose composition API', () => {
       estimatePose: vi.fn(),
       predict: vi.fn()
     };
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => legacy)},
       createFile
     });
@@ -578,14 +578,14 @@ describe('TMPose composition API', () => {
       model: classifier,
       getClassLabels: vi.fn(() => ['incomplete'])
     };
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => incomplete)},
       createFile
     });
 
     await expect(
       composition.registerPoseModel({name: 'Incomplete', files: files()})
-    ).rejects.toMatchObject({code: 'TMPOSE-COMPOSITION-009'});
+    ).rejects.toMatchObject({code: 'TM-COMPOSITION-009'});
     expect(classifier.dispose).toHaveBeenCalledOnce();
     expect(composition.isPoseModelRegistered('Incomplete')).toBe(false);
   });
@@ -595,14 +595,14 @@ describe('TMPose composition API', () => {
     loaded.model.dispose.mockImplementation(() => {
       throw new Error('classifier dispose failed');
     });
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => loaded)},
       createFile
     });
     await composition.registerPoseModel({name: 'Failure', files: files()});
 
     await expect(composition.releasePoseModel('Failure')).rejects.toMatchObject({
-      errors: [{code: 'TMPOSE-COMPOSITION-009'}]
+      errors: [{code: 'TM-COMPOSITION-009'}]
     });
     expect(loaded.model.dispose).toHaveBeenCalledOnce();
     expect(loaded.posenetModel.dispose).toHaveBeenCalledOnce();
@@ -613,7 +613,7 @@ describe('TMPose composition API', () => {
     let activeModels = 0;
     let maximumActiveModels = 0;
     const loadedModels: ReturnType<typeof model>[] = [];
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {
         Webcam: class {},
         loadFromFiles: vi.fn(async () => {
@@ -660,7 +660,7 @@ describe('TMPose composition API', () => {
       return webcam;
     });
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -693,7 +693,7 @@ describe('TMPose composition API', () => {
       return webcam;
     });
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -741,7 +741,7 @@ describe('TMPose composition API', () => {
       update: vi.fn()
     };
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: vi.fn(function () { return webcam; }) as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -750,7 +750,7 @@ describe('TMPose composition API', () => {
     await composition.startCamera();
     for (const opacity of [-0.1, 1.1, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(() => composition.setPreviewOpacity(opacity)).toThrow(
-        expect.objectContaining({code: 'TMPOSE-COMPOSITION-014'})
+        expect.objectContaining({code: 'TM-COMPOSITION-014'})
       );
       expect(canvas.style.opacity).toBe('0.2');
     }
@@ -758,37 +758,37 @@ describe('TMPose composition API', () => {
   });
 
   it('rejects non-canonical composition preview positions', async () => {
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
 
     expect(() => composition.setPreviewPosition('full' as never)).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-013'})
+      expect.objectContaining({code: 'TM-COMPOSITION-013'})
     );
     await composition.releaseAll();
     expect(() => composition.hidePreview()).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-007'})
+      expect.objectContaining({code: 'TM-COMPOSITION-007'})
     );
   });
 
   it('rejects non-canonical composition preview mirroring values', async () => {
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
 
     expect(() => composition.setPreviewMirroring('normal' as never)).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-010'})
+      expect.objectContaining({code: 'TM-COMPOSITION-010'})
     );
     await composition.releaseAll();
     expect(() => composition.setPreviewMirroring('mirrored')).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-007'})
+      expect.objectContaining({code: 'TM-COMPOSITION-007'})
     );
   });
 
   it('configures and validates the public SVG pose overlay API', async () => {
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
@@ -828,12 +828,12 @@ describe('TMPose composition API', () => {
       } as never)
     ];
     for (const call of invalidCalls) {
-      expect(call).toThrow(expect.objectContaining({code: 'TMPOSE-COMPOSITION-016'}));
+      expect(call).toThrow(expect.objectContaining({code: 'TM-COMPOSITION-016'}));
     }
 
     await composition.releaseAll();
     expect(() => composition.showPoseOverlay()).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-007'})
+      expect.objectContaining({code: 'TM-COMPOSITION-007'})
     );
   });
 
@@ -850,7 +850,7 @@ describe('TMPose composition API', () => {
       .mockResolvedValueOnce([
         {kind: 'videoinput', deviceId: 'third-id', label: 'Third Camera'}
       ]);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
@@ -873,7 +873,7 @@ describe('TMPose composition API', () => {
   });
 
   it('validates camera selections and reports unavailable enumeration deterministically', async () => {
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
@@ -887,13 +887,13 @@ describe('TMPose composition API', () => {
     ];
     for (const selection of invalidSelections) {
       await expect(composition.selectCamera(selection as never)).rejects.toMatchObject({
-        code: 'TMPOSE-COMPOSITION-011'
+        code: 'TM-COMPOSITION-011'
       });
     }
 
     vi.stubGlobal('navigator', {});
     await expect(composition.listCameraDevices()).rejects.toMatchObject({
-      code: 'TMPOSE-COMPOSITION-012'
+      code: 'TM-COMPOSITION-012'
     });
     await composition.releaseAll();
   });
@@ -919,7 +919,7 @@ describe('TMPose composition API', () => {
       return webcam;
     });
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -967,7 +967,7 @@ describe('TMPose composition API', () => {
     ]);
     vi.mocked(document.querySelector).mockReturnValue(stage);
     const activeModel = model();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => activeModel)},
       createFile
     });
@@ -1023,7 +1023,7 @@ describe('TMPose composition API', () => {
       return webcams.shift();
     });
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -1072,7 +1072,7 @@ describe('TMPose composition API', () => {
       return webcams.shift();
     });
     vi.mocked(document.querySelector).mockReturnValue(stage);
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn()},
       createFile
     });
@@ -1092,24 +1092,24 @@ describe('TMPose composition API', () => {
     expect(releaseCompleted).toBe(false);
 
     pendingSetup.resolve(undefined);
-    expect(await selectingResult).toMatchObject({code: 'TMPOSE-COMPOSITION-007'});
-    expect(await queuedResult).toMatchObject({code: 'TMPOSE-COMPOSITION-007'});
+    expect(await selectingResult).toMatchObject({code: 'TM-COMPOSITION-007'});
+    expect(await queuedResult).toMatchObject({code: 'TM-COMPOSITION-007'});
     await releasing;
     expect(Webcam).toHaveBeenCalledTimes(2);
     expect(initialTrack.stop).toHaveBeenCalledOnce();
     expect(selectedTrack.stop).toHaveBeenCalledOnce();
     expect(composition.isCameraRunning()).toBe(false);
     await expect(composition.selectCamera('front')).rejects.toMatchObject({
-      code: 'TMPOSE-COMPOSITION-007'
+      code: 'TM-COMPOSITION-007'
     });
     await expect(composition.listCameraDevices()).rejects.toMatchObject({
-      code: 'TMPOSE-COMPOSITION-007'
+      code: 'TM-COMPOSITION-007'
     });
     expect(() => composition.getCameraSelection()).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-007'})
+      expect.objectContaining({code: 'TM-COMPOSITION-007'})
     );
     expect(() => composition.getActiveCamera()).toThrow(
-      expect.objectContaining({code: 'TMPOSE-COMPOSITION-007'})
+      expect.objectContaining({code: 'TM-COMPOSITION-007'})
     );
   });
 
@@ -1131,7 +1131,7 @@ describe('TMPose composition API', () => {
     function Webcam() {
       return webcam;
     }
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => loaded.shift()!)},
       createFile
     });
@@ -1192,7 +1192,7 @@ describe('TMPose composition API', () => {
     function Webcam() {
       return webcam;
     }
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => loaded.shift()!)},
       createFile
     });
@@ -1271,7 +1271,7 @@ describe('TMPose composition API', () => {
     }
     let now = 0;
     vi.stubGlobal('performance', {now: () => now});
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => loaded)},
       createFile
     });
@@ -1309,7 +1309,7 @@ describe('TMPose composition API', () => {
   });
 
   it('validates accumulated pose contracts and releases subscribers as a final operation', async () => {
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });
@@ -1371,11 +1371,11 @@ describe('TMPose composition API', () => {
     }
     let now = 0;
     vi.stubGlobal('performance', {now: () => now});
-    const first = createTMPoseComposition({
+    const first = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => firstModel)},
       createFile
     });
-    const second = createTMPoseComposition({
+    const second = createTMComposition({
       runtime: {Webcam: Webcam as never, loadFromFiles: vi.fn(async () => secondModel)},
       createFile
     });
@@ -1418,7 +1418,7 @@ describe('TMPose composition API', () => {
 
   it('constructs and configures the composition without global Scratch', async () => {
     vi.unstubAllGlobals();
-    const composition = createTMPoseComposition({
+    const composition = createTMComposition({
       runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
       createFile
     });

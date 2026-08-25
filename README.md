@@ -4,9 +4,9 @@ Use a [Teachable Machine](https://teachablemachine.withgoogle.com/) pose, image,
 an input for TurboWarp projects. The extension turns each camera frame or microphone window into labels,
 confidence scores, and Boolean conditions that Scratch-style scripts can use.
 
-TurboWarp TM is the renamed package line for the former TurboWarp TMPose extension. The Scratch
-extension ID remains `tmpose` for project compatibility, while the package, repository, Pages URL,
-and browser build now use `turbowarp-tm`.
+TurboWarp TM uses the Scratch extension ID `kubohiroyatm` from the 2.x release line onward to
+avoid short-ID collisions while the package, repository, Pages URL, and browser build use
+`turbowarp-tm`.
 
 **[Open the illustrated user guide (English)](https://kubohiroya.github.io/turbowarp-tm/)** ·
 **[日本語ガイド](https://kubohiroya.github.io/turbowarp-tm/ja/)** ·
@@ -55,7 +55,7 @@ with **Run extension without sandbox** enabled.
 The browser-ready, version-pinned build is also available from jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@1.0.0/dist/tm.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@2.0.0/dist/tm.js
 ```
 
 The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 1.3.1
@@ -65,13 +65,13 @@ Composite runtimes can load or embed the same artifact without rewriting a minif
 bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@1.0.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@2.0.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tm@1.0.0
+pnpm add --save-exact @kubohiroya/turbowarp-tm@2.0.0
 ```
 
 ### Offline PoseNet bundle API
@@ -85,7 +85,7 @@ as an image, sound, or costume.
 ```js
 import {readFile} from 'node:fs/promises';
 import {
-  createBundledTMPoseRuntime,
+  createBundledTMRuntime,
   createPoseNetProjectBundleFromLoader,
 } from '@kubohiroya/turbowarp-tm/posenet';
 
@@ -95,7 +95,7 @@ const projectBundle = await createPoseNetProjectBundleFromLoader((file) =>
 
 // A browser host can store projectBundle in its own project-data channel.
 // Decode and hash verification start only on the first loadFromFiles() call.
-const offlineRuntime = createBundledTMPoseRuntime({
+const offlineRuntime = createBundledTMRuntime({
   runtime: tmPose,
   projectBundle,
 });
@@ -105,7 +105,7 @@ The model supply contains exactly 5,082,500 bytes. Its three SHA-256 operations 
 and the first shared verification overlaps the Teachable Machine classifier load. The intercepted
 PoseNet fetch never exposes bytes until that verification succeeds. Later model requests reuse the
 same verified supply. Tampering, missing or incorrectly sized files, and unexpected PoseNet network
-requests fail closed with `TMPOSE-POSENET-*` error codes.
+requests fail closed with `TM-POSENET-*` error codes.
 
 ### Composition API
 
@@ -115,10 +115,10 @@ Pose runtime and validated model bytes, so this path does not download runtime s
 files.
 
 ```js
-import {createTMPoseComposition} from '@kubohiroya/turbowarp-tm/composition';
+import {createTMComposition} from '@kubohiroya/turbowarp-tm/composition';
 
-const pose = createTMPoseComposition({
-  runtime: bundledTMPoseRuntime,
+const pose = createTMComposition({
+  runtime: bundledTMRuntime,
   modelInitializationPolicy: 'latest-needed',
   // Optional latency-first mode; it remains off by default.
   // parallelModelInitialization: true,
@@ -196,7 +196,7 @@ pending registration work and waits for safe cleanup.
 Runtime model phases remain sequential by default. Cancellation is checked after TensorFlow
 readiness, classifier loading, metadata parsing, and PoseNet loading, so a skipped demand does not
 start the next expensive phase. Set `parallelModelInitialization: true` on the composition or
-`createBundledTMPoseRuntime()` only when lower startup latency is more important than those phase
+`createBundledTMRuntime()` only when lower startup latency is more important than those phase
 boundaries. That opt-in starts classifier, metadata, and PoseNet initialization together; work
 already accepted by TensorFlow cannot be physically interrupted, but every completed stale resource
 is still disposed before cancellation settles. The `latest-needed` queue continues to permit only
@@ -231,7 +231,7 @@ element.
 frozen canonical copy containing only unique, non-empty video device IDs in enumeration order;
 labels remain the empty string when permission has not made them available. Empty IDs are omitted,
 and the first occurrence wins when an ID is duplicated. Enumeration failures use
-`TMPOSE-COMPOSITION-012` and never expose `MediaDeviceInfo`, `MediaStreamTrack`, or a stream.
+`TM-COMPOSITION-012` and never expose `MediaDeviceInfo`, `MediaStreamTrack`, or a stream.
 
 Select `default`, `front`, or `back` as a camera preference, or wrap a session-only browser ID as
 `{deviceId}`. The object form is intentionally distinct, so a physical device whose ID is literally
@@ -239,7 +239,7 @@ Select `default`, `front`, or `back` as a camera preference, or wrap a session-o
 camera startup or while recognition is running. Running switches preserve the prepared model,
 recognition state, and all preview settings. Concurrent selections run in call order; a failed
 switch restores the preceding successful camera and selection. Invalid selections use
-`TMPOSE-COMPOSITION-011`. `getCameraSelection()` returns an isolated immutable copy, and
+`TM-COMPOSITION-011`. `getCameraSelection()` returns an isolated immutable copy, and
 `getActiveCamera()` returns an immutable `{deviceId, label}` only while an identifiable camera is
 running. The extension never persists device IDs. `releaseAll()` rejects queued selection work, waits for
 an in-progress switch to become quiescent, and then stops the final stream; all four camera-device
@@ -260,7 +260,7 @@ therefore disconnects an active model from recognition first and disposes those 
 resources separately and exactly once; it does not call the incomplete top-level disposer for this
 official shape. A custom injected runtime without those fields can retain the legacy single
 top-level `dispose()` contract. A runtime that exposes only part of the official shape is rejected
-with `TMPOSE-COMPOSITION-009`, after every safely identifiable resource has been attempted.
+with `TM-COMPOSITION-009`, after every safely identifiable resource has been attempted.
 
 Model, weights, and metadata `File` objects exist only for the pending `loadFromFiles()` call and
 are not stored in the named registry. `releasePoseModel()` and `releaseAll()` invalidate and wait for
@@ -388,8 +388,8 @@ scores.
 
 The `accumulatedPoseEvents` feature flag is also **off by default** and requires
 `temporalPoseScoring`. When both are enabled, other unsandboxed extensions can check
-`runtime.ext_tmpose.supportsAccumulatedPoseEvents()` and subscribe to
-`TMPOSE_ACCUMULATED_POSE_CHANGED` on the TurboWarp runtime.
+`runtime.ext_kubohiroyatm.supportsAccumulatedPoseEvents()` and subscribe to
+`TM_ACCUMULATED_POSE_CHANGED` on the TurboWarp runtime.
 
 Each version 2 event includes `poseName`, `previousPoseName`, `score`, `reason` (`recognition`,
 `reset`, or `stop`), and a monotonic `timestamp`. Score-only updates do not emit an event.

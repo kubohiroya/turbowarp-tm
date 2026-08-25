@@ -1,4 +1,4 @@
-import {TMPoseExtension, type AccumulatedPoseChangedEventV2} from './extension.js';
+import {TMExtension, type AccumulatedPoseChangedEventV2} from './extension.js';
 import {
   isPoseKeypointName,
   type PoseBoneStyle,
@@ -15,7 +15,7 @@ export type {
   PoseOverlayConfidenceScaling
 } from './pose-overlay.js';
 
-export interface TMPoseCompositionRuntime {
+export interface TMCompositionRuntime {
   Webcam: new (width: number, height: number, flipHorizontal: boolean) => unknown;
   loadFromFiles(
     model: File,
@@ -73,7 +73,7 @@ export interface CameraDevice {
 
 export type AccumulatedPoseListener = (event: Readonly<AccumulatedPoseChangedEventV2>) => void;
 
-export interface TMPoseComposition {
+export interface TMComposition {
   registerPoseModel(
     input: PoseModelRegistrationInput,
     options?: PoseModelRegistrationOptions
@@ -117,8 +117,8 @@ export interface TMPoseComposition {
   subscribeAccumulatedPose(listener: AccumulatedPoseListener): () => void;
 }
 
-export interface TMPoseCompositionOptions {
-  runtime: TMPoseCompositionRuntime;
+export interface TMCompositionOptions {
+  runtime: TMCompositionRuntime;
   createFile?: (bytes: Uint8Array, name: string, mimeType: string) => File;
   modelInitializationPolicy?: PoseModelInitializationPolicy;
   parallelModelInitialization?: boolean;
@@ -165,9 +165,9 @@ function compositionError(code: string, message: string): Error {
 }
 
 function abortError(name: string): Error {
-  const error = new Error(`TMPose model registration was cancelled: ${name}`);
+  const error = new Error(`TM model registration was cancelled: ${name}`);
   error.name = 'AbortError';
-  Object.defineProperty(error, 'code', {value: 'TMPOSE-COMPOSITION-015'});
+  Object.defineProperty(error, 'code', {value: 'TM-COMPOSITION-015'});
   return error;
 }
 
@@ -196,7 +196,7 @@ function hasCompleteDisposalContract(model: LoadedPoseModel): boolean {
 
 function requireName(value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw compositionError('TMPOSE-COMPOSITION-001', 'Pose model name must be a non-empty string.');
+    throw compositionError('TM-COMPOSITION-001', 'Pose model name must be a non-empty string.');
   }
   return value.trim();
 }
@@ -207,12 +207,12 @@ function copyBytes(value: unknown, path: string): Uint8Array {
   else if (value instanceof Uint8Array) bytes = value;
   else {
     throw compositionError(
-      'TMPOSE-COMPOSITION-002',
+      'TM-COMPOSITION-002',
       `Pose model file ${path} must provide an ArrayBuffer or Uint8Array.`
     );
   }
   if (bytes.byteLength === 0) {
-    throw compositionError('TMPOSE-COMPOSITION-002', `Pose model file ${path} is empty.`);
+    throw compositionError('TM-COMPOSITION-002', `Pose model file ${path} is empty.`);
   }
   return Uint8Array.from(bytes);
 }
@@ -221,27 +221,27 @@ function labelsFor(model: LoadedPoseModel): ReadonlyArray<string> {
   const labels = model.getClassLabels?.();
   if (labels === undefined) return Object.freeze([]);
   if (!Array.isArray(labels) || labels.some((label) => typeof label !== 'string')) {
-    throw compositionError('TMPOSE-COMPOSITION-004', 'Loaded pose model returned invalid labels.');
+    throw compositionError('TM-COMPOSITION-004', 'Loaded pose model returned invalid labels.');
   }
   return Object.freeze([...labels]);
 }
 
 function defaultCreateFile(bytes: Uint8Array, name: string, mimeType: string): File {
   if (typeof File !== 'function') {
-    throw compositionError('TMPOSE-COMPOSITION-003', 'The browser File API is not available.');
+    throw compositionError('TM-COMPOSITION-003', 'The browser File API is not available.');
   }
   return new File([bytes], name, {type: mimeType});
 }
 
-function validateRuntime(value: unknown): TMPoseCompositionRuntime {
+function validateRuntime(value: unknown): TMCompositionRuntime {
   if (
     !isRecord(value) ||
     typeof value.loadFromFiles !== 'function' ||
     typeof value.Webcam !== 'function'
   ) {
-    throw new TypeError('TMPose composition runtime must provide loadFromFiles and Webcam.');
+    throw new TypeError('TM composition runtime must provide loadFromFiles and Webcam.');
   }
-  return value as unknown as TMPoseCompositionRuntime;
+  return value as unknown as TMCompositionRuntime;
 }
 
 function validateModelInitializationPolicy(value: unknown): PoseModelInitializationPolicy {
@@ -260,13 +260,13 @@ function validateRegistrationOptions(value: unknown): PoseModelRegistrationOptio
   if (value === undefined) return {};
   if (!isRecord(value)) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-015',
+      'TM-COMPOSITION-015',
       'Pose model registration options must be an object.'
     );
   }
   if (Object.keys(value).some((key) => key !== 'signal')) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-015',
+      'TM-COMPOSITION-015',
       'Pose model registration options may only provide signal.'
     );
   }
@@ -279,7 +279,7 @@ function validateRegistrationOptions(value: unknown): PoseModelRegistrationOptio
       typeof signal.removeEventListener !== 'function')
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-015',
+      'TM-COMPOSITION-015',
       'Pose model registration signal must be an AbortSignal.'
     );
   }
@@ -295,7 +295,7 @@ function validateAccumulatedPoseConfiguration(value: unknown): AccumulatedPoseCo
     !Object.hasOwn(value, 'scoreThreshold')
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-008',
+      'TM-COMPOSITION-008',
       'Accumulated pose configuration must provide accumulationPerSecond, decayPerSecond, and scoreThreshold.'
     );
   }
@@ -315,7 +315,7 @@ function validateAccumulatedPoseConfiguration(value: unknown): AccumulatedPoseCo
     scoreThreshold < 0
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-008',
+      'TM-COMPOSITION-008',
       'Accumulated pose configuration values are out of range.'
     );
   }
@@ -325,7 +325,7 @@ function validateAccumulatedPoseConfiguration(value: unknown): AccumulatedPoseCo
 function validatePreviewMirroring(value: unknown): PreviewMirroring {
   if (value !== 'mirrored' && value !== 'unmirrored') {
     throw compositionError(
-      'TMPOSE-COMPOSITION-010',
+      'TM-COMPOSITION-010',
       'Preview mirroring must be either mirrored or unmirrored.'
     );
   }
@@ -342,7 +342,7 @@ function validatePreviewPosition(value: unknown): PreviewPosition {
     value !== 'full-stage'
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-013',
+      'TM-COMPOSITION-013',
       'Preview position must be top-left, top-right, bottom-left, bottom-right, center, or full-stage.'
     );
   }
@@ -352,7 +352,7 @@ function validatePreviewPosition(value: unknown): PreviewPosition {
 function validatePreviewOpacity(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-014',
+      'TM-COMPOSITION-014',
       'Preview opacity must be a finite number from 0 to 1.'
     );
   }
@@ -362,7 +362,7 @@ function validatePreviewOpacity(value: unknown): number {
 function validatePoseStyleColor(value: unknown, property: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-016',
+      'TM-COMPOSITION-016',
       `Pose overlay ${property} must be a non-empty CSS color string.`
     );
   }
@@ -382,7 +382,7 @@ function validatePoseStyleNumber(
   ) {
     const range = maximum === undefined ? 'a non-negative finite number' : `from 0 to ${maximum}`;
     throw compositionError(
-      'TMPOSE-COMPOSITION-016',
+      'TM-COMPOSITION-016',
       `Pose overlay ${property} must be ${range}.`
     );
   }
@@ -391,7 +391,7 @@ function validatePoseStyleNumber(
 
 function validatePoseKeypointName(value: unknown): PoseKeypointName {
   if (!isPoseKeypointName(value)) {
-    throw compositionError('TMPOSE-COMPOSITION-016', 'Pose overlay joint name is invalid.');
+    throw compositionError('TM-COMPOSITION-016', 'Pose overlay joint name is invalid.');
   }
   return value;
 }
@@ -405,7 +405,7 @@ function validatePoseJointStyle(value: unknown): PoseJointStyle {
     !Object.hasOwn(value, 'radius')
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-016',
+      'TM-COMPOSITION-016',
       'Pose joint style must provide color, opacity, and radius.'
     );
   }
@@ -425,7 +425,7 @@ function validatePoseBoneStyle(value: unknown): PoseBoneStyle {
     !Object.hasOwn(value, 'width')
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-016',
+      'TM-COMPOSITION-016',
       'Pose bone style must provide color, opacity, and width.'
     );
   }
@@ -444,7 +444,7 @@ function validatePoseOverlayConfidenceScaling(value: unknown): PoseOverlayConfid
     keys.some((key) => !Object.hasOwn(value, key) || typeof value[key] !== 'boolean')
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-016',
+      'TM-COMPOSITION-016',
       'Pose confidence scaling must provide four boolean style options.'
     );
   }
@@ -466,7 +466,7 @@ function validateCameraSelection(value: unknown): CameraSelection {
     value.deviceId.trim().length === 0
   ) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-011',
+      'TM-COMPOSITION-011',
       'Camera selection must be default, front, back, or an object with one non-empty deviceId.'
     );
   }
@@ -482,7 +482,7 @@ function copyCameraSelection(selection: CameraSelection): CameraSelection {
 function canonicalCameraDevices(value: unknown): ReadonlyArray<Readonly<CameraDevice>> {
   if (!Array.isArray(value)) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-012',
+      'TM-COMPOSITION-012',
       'Camera device enumeration returned an invalid result.'
     );
   }
@@ -503,7 +503,7 @@ function canonicalCameraDevices(value: unknown): ReadonlyArray<Readonly<CameraDe
 
 function validateFiles(
   input: PoseModelRegistrationInput,
-  createFile: NonNullable<TMPoseCompositionOptions['createFile']>
+  createFile: NonNullable<TMCompositionOptions['createFile']>
 ): {
   model: File;
   weights: File;
@@ -512,31 +512,31 @@ function validateFiles(
 } {
   if (!Array.isArray(input.files) || input.files.length !== 3) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-002',
+      'TM-COMPOSITION-002',
       'A pose model must contain model.json, metadata.json, and exactly one weights .bin file.'
     );
   }
   const files = new Map<string, {file: File; bytes: Uint8Array}>();
   for (const candidate of input.files) {
     if (!isRecord(candidate) || typeof candidate.path !== 'string' || candidate.path.length === 0) {
-      throw compositionError('TMPOSE-COMPOSITION-002', 'Pose model file path is invalid.');
+      throw compositionError('TM-COMPOSITION-002', 'Pose model file path is invalid.');
     }
     const path = candidate.path;
     if (path.includes('/') || path.includes('\\') || files.has(path)) {
       throw compositionError(
-        'TMPOSE-COMPOSITION-002',
+        'TM-COMPOSITION-002',
         `Pose model file path must be a unique root filename: ${path}`
       );
     }
     const validName = path === 'model.json' || path === 'metadata.json' || path.endsWith('.bin');
     if (!validName) {
-      throw compositionError('TMPOSE-COMPOSITION-002', `Unsupported pose model file: ${path}`);
+      throw compositionError('TM-COMPOSITION-002', `Unsupported pose model file: ${path}`);
     }
     const mimeType = path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
     const bytes = copyBytes(candidate.bytes, path);
     const file = createFile(bytes, path, mimeType);
     if (!isRecord(file) || file.name !== path) {
-      throw compositionError('TMPOSE-COMPOSITION-003', `File factory returned an invalid ${path}.`);
+      throw compositionError('TM-COMPOSITION-003', `File factory returned an invalid ${path}.`);
     }
     files.set(path, {file: file as File, bytes});
   }
@@ -545,7 +545,7 @@ function validateFiles(
   const weights = [...files.entries()].filter(([path]) => path.endsWith('.bin'));
   if (!model || !metadata || weights.length !== 1) {
     throw compositionError(
-      'TMPOSE-COMPOSITION-002',
+      'TM-COMPOSITION-002',
       'A pose model must contain model.json, metadata.json, and exactly one weights .bin file.'
     );
   }
@@ -581,8 +581,8 @@ function sameValidatedFiles(
   );
 }
 
-export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPoseComposition {
-  if (!isRecord(options)) throw new TypeError('TMPose composition options must be an object.');
+export function createTMComposition(options: TMCompositionOptions): TMComposition {
+  if (!isRecord(options)) throw new TypeError('TM composition options must be an object.');
   const runtime = validateRuntime(options.runtime);
   const createFile = options.createFile ?? defaultCreateFile;
   if (typeof createFile !== 'function') throw new TypeError('createFile must be a function.');
@@ -593,7 +593,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
     options.parallelModelInitialization
   );
   const accumulatedPoseListeners = new Set<AccumulatedPoseListener>();
-  const extension = new TMPoseExtension(
+  const extension = new TMExtension(
     {temporalPoseScoring: true, accumulatedPoseEvents: true, poseOverlay: true},
     {
       runtime,
@@ -627,7 +627,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
 
   function ensureActive(): void {
     if (released) {
-      throw compositionError('TMPOSE-COMPOSITION-007', 'TMPose composition has been released.');
+      throw compositionError('TM-COMPOSITION-007', 'TM composition has been released.');
     }
   }
 
@@ -706,7 +706,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
         if (!classifier || !poseNet || classifier === poseNet) {
           errors.push(
             compositionError(
-              'TMPOSE-COMPOSITION-009',
+              'TM-COMPOSITION-009',
               'Loaded pose model does not expose distinct disposable classifier and PoseNet resources.'
             )
           );
@@ -717,7 +717,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
         if (!legacy) {
           errors.push(
             compositionError(
-              'TMPOSE-COMPOSITION-009',
+              'TM-COMPOSITION-009',
               'Loaded pose model does not expose a complete disposal contract.'
             )
           );
@@ -732,8 +732,8 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
       }
       if (errors.length > 0) {
         throw aggregateCompositionError(
-          'TMPOSE-COMPOSITION-009',
-          'TMPose could not completely dispose a loaded pose model.',
+          'TM-COMPOSITION-009',
+          'TM could not completely dispose a loaded pose model.',
           errors
         );
       }
@@ -812,8 +812,8 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
     if (!isRecord(loaded)) {
       if (requestWasCancelled(request)) throw abortError(request.name);
       throw compositionError(
-        'TMPOSE-COMPOSITION-004',
-        `TMPose failed to load model ${request.name}.`
+        'TM-COMPOSITION-004',
+        `TM failed to load model ${request.name}.`
       );
     }
     const model = loaded as LoadedPoseModel;
@@ -938,7 +938,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
     return undefined;
   }
 
-  const composition: TMPoseComposition = {
+  const composition: TMComposition = {
     registerPoseModel(input, registrationOptions) {
       let name: string;
       let files: ReturnType<typeof validateFiles>;
@@ -947,7 +947,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
       try {
         ensureActive();
         if (!isRecord(input)) {
-          throw compositionError('TMPOSE-COMPOSITION-001', 'Pose model input must be an object.');
+          throw compositionError('TM-COMPOSITION-001', 'Pose model input must be an object.');
         }
         name = requireName(input.name);
         ({signal} = validateRegistrationOptions(registrationOptions));
@@ -955,7 +955,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
         files = validateFiles(input, createFile);
         if (activeName === name && extension.isRecognizing()) {
           throw compositionError(
-            'TMPOSE-COMPOSITION-005',
+            'TM-COMPOSITION-005',
             `Stop recognition before replacing active pose model ${name}.`
           );
         }
@@ -977,13 +977,13 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
       const entry = models.get(normalizedName);
       if (!entry) {
         throw compositionError(
-          'TMPOSE-COMPOSITION-006',
+          'TM-COMPOSITION-006',
           `Pose model is not registered: ${normalizedName}`
         );
       }
       if (extension.isRecognizing() && activeName !== normalizedName) {
         throw compositionError(
-          'TMPOSE-COMPOSITION-005',
+          'TM-COMPOSITION-005',
           'Stop recognition before changing the active pose model.'
         );
       }
@@ -1172,7 +1172,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
       } catch (error) {
         if (released) ensureActive();
         const wrapped = compositionError(
-          'TMPOSE-COMPOSITION-012',
+          'TM-COMPOSITION-012',
           'Camera device enumeration is unavailable.'
         );
         Object.defineProperty(wrapped, 'cause', {value: error});
@@ -1234,7 +1234,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
     async startRecognition() {
       ensureActive();
       if (!activeName) {
-        throw compositionError('TMPOSE-COMPOSITION-006', 'Activate a pose model first.');
+        throw compositionError('TM-COMPOSITION-006', 'Activate a pose model first.');
       }
       await extension.startRecognition();
     },
@@ -1290,7 +1290,7 @@ export function createTMPoseComposition(options: TMPoseCompositionOptions): TMPo
       ensureActive();
       if (typeof listener !== 'function') {
         throw compositionError(
-          'TMPOSE-COMPOSITION-008',
+          'TM-COMPOSITION-008',
           'Accumulated pose listener must be a function.'
         );
       }
