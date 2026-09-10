@@ -2,6 +2,9 @@ allowBuilds:
   core-js: false
   esbuild: false
 
+minimumReleaseAgeExclude:
+  - '@kubohiroya/vite-plugin-turbowarp-extension@0.4.0'
+
 # The Teachable Machine and TensorFlow.js model packages still pin their peer
 # ranges to the TensorFlow.js 1.x/3.x era. TurboWarp TM ships one TensorFlow.js
 # 4.22.0 module graph, so every package in the tree resolves to that one copy.
