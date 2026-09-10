@@ -10,7 +10,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noCheck": true,
-    "types": ["vitest/globals"]
+    "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["scripts", "src", "tests", "vite.config.ts"]
 }
