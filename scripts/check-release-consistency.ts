@@ -2,12 +2,33 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import process from 'node:process';
 
-const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
+interface PackageMetadata {
+  name: string;
+  version: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  homepage?: string;
+  packageManager?: string;
+  engines?: {node?: string};
+  repository?: {url?: string};
+  bugs?: {url?: string};
+  files?: string[];
+  bin?: string | Record<string, string>;
+  main?: string;
+  types?: string;
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+const packageMetadata = JSON.parse(await readFile('package.json', 'utf8')) as PackageMetadata;
 const dependencies = packageMetadata.devDependencies;
 const version = packageMetadata.version;
 const pinnedPackage = `${packageMetadata.name}@${version}`;
 const docsBrandName = 'Teachable Machine';
-const errors = [];
+const errors: string[] = [];
 
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
   errors.push(`package.json contains an invalid version: ${version}`);

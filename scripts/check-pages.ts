@@ -2,9 +2,9 @@ import {access, readFile, readdir} from 'node:fs/promises';
 import {dirname, join, normalize, relative, resolve} from 'node:path';
 
 const docsRoot = resolve('docs');
-const htmlFiles = [];
+const htmlFiles: string[] = [];
 
-async function collectHtmlFiles(directory) {
+async function collectHtmlFiles(directory: string): Promise<void> {
   for (const entry of await readdir(directory, {withFileTypes: true})) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) await collectHtmlFiles(path);
@@ -12,15 +12,15 @@ async function collectHtmlFiles(directory) {
   }
 }
 
-function localReferences(html) {
+function localReferences(html: string): string[] {
   return [...html.matchAll(/(?:href|src)="([^"]+)"/g)]
-    .map((match) => match[1])
+    .flatMap((match) => match[1] ?? [])
     .filter((reference) => !reference.startsWith('#'))
     .filter((reference) => !/^(?:https?:|mailto:|data:)/.test(reference));
 }
 
-function resolveReference(pagePath, reference) {
-  const pathOnly = decodeURIComponent(reference.split(/[?#]/, 1)[0]);
+function resolveReference(pagePath: string, reference: string): string {
+  const pathOnly = decodeURIComponent(reference.split(/[?#]/, 1)[0] ?? '');
   const target = pathOnly.startsWith('/')
     ? join(docsRoot, pathOnly.replace(/^\/turbowarp-tm\/?/, ''))
     : resolve(dirname(pagePath), pathOnly);
@@ -29,7 +29,7 @@ function resolveReference(pagePath, reference) {
 
 await collectHtmlFiles(docsRoot);
 
-const errors = [];
+const errors: string[] = [];
 for (const pagePath of htmlFiles) {
   const html = await readFile(pagePath, 'utf8');
   for (const reference of localReferences(html)) {
