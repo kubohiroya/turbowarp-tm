@@ -65,7 +65,7 @@ That download, and the artifact a composite runtime fetches, is the version-pinn
 jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/tm.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.2.0/dist/tm.js
 ```
 
 The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 4.22.0
@@ -77,13 +77,13 @@ Composite runtimes can load or embed the same artifact without rewriting a minif
 bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.2.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tm@3.1.0
+pnpm add --save-exact @kubohiroya/turbowarp-tm@3.2.0
 ```
 
 ### Offline PoseNet bundle API
