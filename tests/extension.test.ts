@@ -152,7 +152,7 @@ describe('TMExtension', () => {
     expect(iconSvg).not.toContain('<rect');
     expect(new TMExtension().versionReporter()).toBe(VERSION);
     expect(VERSION).toBe(`${packageMetadata.version}-typescript`);
-    expect(info.blocks).toHaveLength(42);
+    expect(info.blocks).toHaveLength(48);
     const opcodes = info.blocks.map((block) => block.opcode);
     expect(opcodes).toEqual(expect.arrayContaining([
       'setRecognitionMode',
@@ -176,7 +176,11 @@ describe('TMExtension', () => {
     expect(info.menus.cameraMenu.items).toBe('getCameraMenuItems');
   });
 
-  it('exposes accumulated pose blocks only when the feature flag is enabled', () => {
+  it('exposes accumulated pose blocks by default and can disable them with the feature flag', () => {
+    expect(
+      (new TMExtension({temporalPoseScoring: false}).getInfo() as {blocks: Array<{opcode: string}>})
+        .blocks.map((block) => block.opcode)
+    ).not.toContain('accumulatedPoseReporter');
     const info = new TMExtension({
       temporalPoseScoring: true,
       poseOverlay: false
@@ -206,9 +210,9 @@ describe('TMExtension', () => {
       };
     };
 
-    expect(disabled.blocks).toHaveLength(36);
+    expect(disabled.blocks).toHaveLength(42);
     expect(disabled.blocks.map((block) => block.opcode)).not.toContain('setPoseJointStyle');
-    expect(enabled.blocks).toHaveLength(42);
+    expect(enabled.blocks).toHaveLength(48);
     expect(enabled.blocks.map((block) => block.opcode)).toEqual(expect.arrayContaining([
       'setPoseOverlayVisibility',
       'isPoseOverlayVisible',

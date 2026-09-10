@@ -7,7 +7,12 @@ export interface RuntimeModelLoaderDependencies {
   ready(): Promise<void>;
   loadClassifier(model: File, weights: File): Promise<unknown>;
   loadMetadata(metadata: File): Promise<unknown>;
-  loadPoseNet(): Promise<unknown>;
+  /**
+   * The metadata describes which PoseNet a model was trained against, and the
+   * classifier's input size follows from that choice, so PoseNet cannot be
+   * loaded before the metadata has been read.
+   */
+  loadPoseNet(metadata: unknown): Promise<unknown>;
   createModel(classifier: unknown, poseNet: unknown, metadata: unknown): unknown;
 }
 
@@ -101,7 +106,7 @@ async function loadSequentially(
     throwIfAborted(signal);
     const metadataValue = await dependencies.loadMetadata(metadata);
     throwIfAborted(signal);
-    poseNet = await dependencies.loadPoseNet();
+    poseNet = await dependencies.loadPoseNet(metadataValue);
     throwIfAborted(signal);
     return dependencies.createModel(classifier, poseNet, metadataValue);
   } catch (error) {
@@ -118,6 +123,12 @@ function invoke(operation: () => Promise<unknown>): Promise<unknown> {
   }
 }
 
+/**
+ * The metadata read decides which PoseNet to fetch, so it settles first. It is a
+ * few hundred bytes off a local File, while the classifier weights and the
+ * PoseNet weights are megabytes each — those two still load together, which is
+ * where the parallel policy actually pays.
+ */
 async function loadInParallel(
   dependencies: RuntimeModelLoaderDependencies,
   model: File,
@@ -125,17 +136,23 @@ async function loadInParallel(
   metadata: File,
   signal?: AbortSignal
 ): Promise<unknown> {
+  const [metadataOutcome] = await Promise.allSettled([
+    invoke(() => dependencies.loadMetadata(metadata))
+  ]);
+  const metadataValue =
+    metadataOutcome.status === 'fulfilled' ? metadataOutcome.value : undefined;
   const results = await Promise.allSettled([
     invoke(() => dependencies.loadClassifier(model, weights)),
-    invoke(() => dependencies.loadMetadata(metadata)),
-    invoke(() => dependencies.loadPoseNet())
+    metadataOutcome.status === 'fulfilled'
+      ? invoke(() => dependencies.loadPoseNet(metadataValue))
+      : Promise.resolve(undefined)
   ]);
   const classifier = results[0].status === 'fulfilled' ? results[0].value : undefined;
-  const metadataValue = results[1].status === 'fulfilled' ? results[1].value : undefined;
-  const poseNet = results[2].status === 'fulfilled' ? results[2].value : undefined;
-  const loadErrors = results.flatMap((result) =>
-    result.status === 'rejected' ? [result.reason] : []
-  );
+  const poseNet = results[1].status === 'fulfilled' ? results[1].value : undefined;
+  const loadErrors = [
+    ...(metadataOutcome.status === 'rejected' ? [metadataOutcome.reason] : []),
+    ...results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []))
+  ];
   if (signal?.aborted || loadErrors.length > 0) {
     const disposalErrors = await disposeResources([classifier, poseNet]);
     throwLoadFailure(

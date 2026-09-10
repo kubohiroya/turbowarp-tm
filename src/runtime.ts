@@ -116,6 +116,34 @@ const compute = createComputeRuntime({
     typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function'
 });
 
+type PoseNetModelSettings = {
+  modelSettings?: {
+    posenet?: {
+      architecture?: poseNet.PoseNetArchitecture;
+      outputStride?: poseNet.PoseNetOutputStride;
+      inputResolution?: poseNet.InputResolution;
+      multiplier?: poseNet.MobileNetMultiplier;
+    };
+  };
+};
+
+/**
+ * Teachable Machine records the PoseNet a model was trained against in its
+ * metadata, and the classifier's input size is the flattened shape of that
+ * PoseNet's output — a mismatch produces a feature vector the classifier cannot
+ * accept. `tmPose.load()` already resolves these settings for the URL path, so
+ * the file path resolves them the same way instead of assuming the defaults.
+ */
+function poseNetConfigFrom(metadata: unknown): poseNet.ModelConfig {
+  const settings = (metadata as PoseNetModelSettings | null)?.modelSettings?.posenet ?? {};
+  return {
+    architecture: settings.architecture ?? 'MobileNetV1',
+    outputStride: settings.outputStride ?? 16,
+    inputResolution: settings.inputResolution ?? 257,
+    multiplier: settings.multiplier ?? 0.75
+  };
+}
+
 const loadFromFiles = createRuntimeModelFileLoader({
   ready: () => tensorflow.ready(),
   loadClassifier: (model, weights) =>
@@ -131,13 +159,7 @@ const loadFromFiles = createRuntimeModelFileLoader({
     }
     return value;
   },
-  loadPoseNet: () =>
-    poseNet.load({
-      architecture: 'MobileNetV1',
-      outputStride: 16,
-      inputResolution: 257,
-      multiplier: 0.75
-    }),
+  loadPoseNet: (metadata) => poseNet.load(poseNetConfigFrom(metadata)),
   createModel: (classifier, loadedPoseNet, metadata) =>
     new teachableMachinePose.CustomPoseNet(
       classifier as tensorflow.LayersModel,

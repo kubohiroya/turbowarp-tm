@@ -134,7 +134,36 @@ describe('cancellable TM runtime model loader', () => {
     expect(setup.value.createModel).not.toHaveBeenCalled();
   });
 
-  it('starts all independent phases together only when parallel loading is enabled', async () => {
+  it('hands the loaded metadata to PoseNet so the trained architecture is used', async () => {
+    const metadata = {
+      labels: ['stand'],
+      modelSettings: {posenet: {architecture: 'ResNet50', outputStride: 32}}
+    };
+    const setup = dependencies({loadMetadata: vi.fn(async () => metadata)});
+
+    await createRuntimeModelFileLoader(setup.value)(modelFile, weightsFile, metadataFile);
+
+    expect(setup.value.loadPoseNet).toHaveBeenCalledExactlyOnceWith(metadata);
+  });
+
+  it('never loads PoseNet when the metadata could not be read', async () => {
+    const failure = new Error('Invalid Metadata provided');
+    const setup = dependencies({
+      loadMetadata: vi.fn(async () => {
+        throw failure;
+      })
+    });
+
+    await expect(
+      createRuntimeModelFileLoader(setup.value)(modelFile, weightsFile, metadataFile, {
+        parallelModelInitialization: true
+      })
+    ).rejects.toBe(failure);
+    expect(setup.value.loadPoseNet).not.toHaveBeenCalled();
+    expect(setup.classifier.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('starts the two heavy phases together once the metadata names the PoseNet', async () => {
     const classifierGate = deferred<unknown>();
     const metadataGate = deferred<unknown>();
     const poseNetGate = deferred<unknown>();
@@ -160,9 +189,12 @@ describe('cancellable TM runtime model loader', () => {
       {parallelModelInitialization: true}
     );
 
-    await vi.waitFor(() => expect(events).toEqual(['classifier', 'metadata', 'posenet']));
-    classifierGate.resolve(setup.classifier);
+    // PoseNet cannot start before the metadata says which PoseNet to fetch.
+    await vi.waitFor(() => expect(events).toEqual(['metadata']));
     metadataGate.resolve(setup.metadata);
+    await vi.waitFor(() => expect(events).toEqual(['metadata', 'classifier', 'posenet']));
+    expect(setup.value.loadPoseNet).toHaveBeenCalledWith(setup.metadata);
+    classifierGate.resolve(setup.classifier);
     poseNetGate.resolve(setup.poseNet);
     await expect(loading).resolves.toBe(setup.combined);
     expect(setup.classifier.dispose).not.toHaveBeenCalled();
@@ -186,10 +218,10 @@ describe('cancellable TM runtime model loader', () => {
       {signal: controller.signal, parallelModelInitialization: true}
     );
 
+    metadataGate.resolve(setup.metadata);
     await vi.waitFor(() => expect(setup.value.loadPoseNet).toHaveBeenCalledOnce());
     controller.abort('scene-skipped');
     classifierGate.resolve(setup.classifier);
-    metadataGate.resolve(setup.metadata);
     poseNetGate.resolve(setup.poseNet);
     await expect(loading).rejects.toMatchObject({code: 'TM-RUNTIME-ABORTED'});
     expect(setup.classifier.dispose).toHaveBeenCalledOnce();

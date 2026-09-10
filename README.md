@@ -65,7 +65,7 @@ That download, and the artifact a composite runtime fetches, is the version-pinn
 jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.0.0/dist/tm.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/tm.js
 ```
 
 The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 4.22.0
@@ -77,13 +77,13 @@ Composite runtimes can load or embed the same artifact without rewriting a minif
 bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.0.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tm@3.0.0
+pnpm add --save-exact @kubohiroya/turbowarp-tm@3.1.0
 ```
 
 ### Offline PoseNet bundle API
@@ -298,14 +298,14 @@ nextScore = previousScore * decayPerSecond^elapsedSeconds
 finite fraction retained per second from zero through one; a changed decay takes effect in the next
 recognition session. `scoreThreshold` is a finite number greater than or equal to zero. An event is
 published only when the selected pose name changes, including one transition to an empty name on
-reset or stop; score-only changes do not publish another event. The Standalone extension keeps its
-temporal-scoring and event feature flags off by default.
+reset or stop; score-only changes do not publish another event. The standalone extension enables
+temporal scoring and keeps only the event feature flag off by default.
 
 ## Upgrading from 2.x
 
 The block surface, the composition API, and the offline PoseNet bundle API are unchanged. A project
-built on 2.x keeps working after swapping the extension file, and three compute blocks appear that
-2.x did not have.
+built on 2.x keeps working after swapping the extension file. New blocks appear that 2.x did not
+have: three for compute backends, and six for accumulated pose scoring.
 
 What changed is the runtime this extension bundles.
 
@@ -456,10 +456,12 @@ and bone width. Joint properties use the corresponding keypoint confidence; bone
 the smaller confidence of the connected endpoints. This makes every enabled property vary from
 zero through its configured value without changing the recognition classifier input.
 
-## Optional accumulated pose scoring
+## Accumulated pose scoring
 
-The `temporalPoseScoring` feature flag is **off by default**. Builds that enable it can combine
-evidence over time for poses that should be held steadily:
+Live confidence flickers frame to frame near a decision boundary. The accumulated score blocks are
+the built-in answer: they combine evidence over time for poses that should be held steadily, so a
+brief misrecognition cannot flip a decision on its own. The `temporalPoseScoring` feature flag is
+**on by default**, so these blocks are in the palette.
 
 ```text
 previous × decay^elapsedSeconds + probability × accumulation × elapsedSeconds
@@ -476,8 +478,8 @@ scores.
 
 ### Accumulated pose change events
 
-The `accumulatedPoseEvents` feature flag is also **off by default** and requires
-`temporalPoseScoring`. When both are enabled, other unsandboxed extensions can check
+The `accumulatedPoseEvents` feature flag is **off by default** and requires `temporalPoseScoring`.
+When both are enabled, other unsandboxed extensions can check
 `runtime.ext_kubohiroyatm.supportsAccumulatedPoseEvents()` and subscribe to
 `TM_ACCUMULATED_POSE_CHANGED` on the TurboWarp runtime.
 

@@ -36,7 +36,13 @@
     return COMPUTE_MODE_ALIASES[text] ?? fallback;
   }
   const FEATURE_FLAGS = {
-    temporalPoseScoring: false,
+    /**
+     * Per-frame confidence flickers near a decision boundary, so the accumulated
+     * score blocks — which integrate confidence over time and decay it — are the
+     * built-in answer to a noisy recognition result. They are on by default; the
+     * event bridge that republishes those changes to other extensions is not.
+     */
+    temporalPoseScoring: true,
     accumulatedPoseEvents: false,
     poseOverlay: true
   };
@@ -98,7 +104,7 @@
     return Math.max(0, Math.min(1, confidence));
   }
   const name = "@kubohiroya/turbowarp-tm";
-  const version = "3.0.0";
+  const version = "3.1.0";
   const packageMetadata = {
     name,
     version
