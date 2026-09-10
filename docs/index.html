@@ -15,10 +15,10 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./" aria-label="Teachable Machine 2.0.0 user guide home">
+      <a class="brand" href="./" aria-label="Teachable Machine 3.0.0 user guide home">
         <span class="brand-mark">TM</span>
         <span class="brand-label">Teachable Machine</span>
-        <span class="version-badge" aria-hidden="true">v2.0.0</span>
+        <span class="version-badge" aria-hidden="true">v3.0.0</span>
       </a>
       <nav class="primary-nav" aria-label="Guide sections">
         <a href="#quick-start">Quick start</a>
@@ -94,7 +94,7 @@
         <p>
           Click the documentation button immediately below the <strong>Teachable Machine</strong> member
           heading. The bundled blocks retain the model URL, recognition, preview, label, score,
-          threshold, and lifecycle behavior described here. The TurboWarp TM 2.0.0 package line keeps the public lifecycle
+          threshold, and lifecycle behavior described here. The TurboWarp TM 3.0.0 package line keeps the public lifecycle
           opcodes <code>startRecognition</code>, <code>stopRecognition</code>, and
           <code>isRecognizing</code>, with no legacy aliases. Configurable SVG pose overlay blocks
           remain available in pose mode, while image mode uses label scoring without keypoints. Latest-needed model initialization
@@ -109,7 +109,7 @@
           <p class="eyebrow">Quick start</p>
           <h2 id="quick-start-title">From model to motion in four steps</h2>
         </div>
-        <p>You need a published Teachable Machine Pose, Image, or Audio model, the matching camera or microphone permission, and network access. Load the extension as a custom extension with <strong>Run extension without sandbox</strong> enabled, then place these blocks in order.</p>
+        <p>You need a published Teachable Machine Pose, Image, or Audio model, the matching camera or microphone permission, and network access. Load the downloaded <code>tm.js</code> from the custom extension dialog’s <strong>Files</strong> tab with <strong>Run without sandbox</strong> enabled, then place these blocks in order.</p>
       </div>
 
       <div class="flow" aria-label="Four-step setup flow">
@@ -145,7 +145,7 @@
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">!</span>
-        <p><strong>Load it unsandboxed.</strong> Camera or microphone access and stage preview integration require TurboWarp’s “Run extension without sandbox” option. Only load extension code you trust.</p>
+        <p><strong>Load it unsandboxed, from the Files tab.</strong> Camera or microphone access and stage preview integration require TurboWarp’s “Run without sandbox” option, which only the custom extension dialog’s <strong>Files</strong> tab offers. The <strong>URL</strong> tab always sandboxes the extension, so pasting a link there leaves the dialog waiting with no message on screen and only <code>TM must run without the extension sandbox.</code> in the browser console. Download <code>tm.js</code> first. Only load extension code you trust.</p>
       </aside>
     </section>
 
@@ -300,6 +300,16 @@
           </ul>
         </article>
         <article class="reference-card">
+          <h3>Compute backend</h3>
+          <p>Choose how much of the machine recognition may use.</p>
+          <ul>
+            <li><code>set compute mode to [MODE]</code> · <code>auto</code> (default), <code>webgpu</code>, <code>webgl</code>, <code>wasm</code>, or <code>cpu</code></li>
+            <li><code>compute mode</code> reports what the project asked for.</li>
+            <li><code>active compute backend</code> reports what the browser actually gave.</li>
+          </ul>
+          <p><code>auto</code> tries WebGPU, WebGL, WASM, and CPU in that order and keeps the first one that really computes. A named mode is a preference: when the browser cannot provide it the same order takes over, and <code>last error</code> explains the substitution. Change the mode before loading a model—switching releases a model loaded from a URL so it can be rebuilt on the new backend.</p>
+        </article>
+        <article class="reference-card">
           <h3>Camera and preview</h3>
           <p>Control capture separately from recognition.</p>
           <ul>
@@ -354,7 +364,8 @@
           <p class="eyebrow">Troubleshooting</p>
           <h2 id="troubleshooting-title">When the result is not what you expect</h2>
         </div>
-        <p>Check <code>last error</code> first. Most setup failures come from permissions, an incorrect model URL, blocked network requests, or loading the extension in the sandbox.</p>
+        <p>Check <code>last error</code> first. Most setup failures come from permissions, an incorrect model URL, blocked network requests, or loading the extension in the sandbox. A sandboxed load is silent in the editor: the dialog keeps waiting and only the browser console shows <code>TM must run without the extension sandbox.</code> Load the file from the <strong>Files</strong> tab, never from the <strong>URL</strong> tab.</p>
+        <p><code>start camera</code> also needs the page to have been interacted with once. Browsers refuse <code>video.play()</code> without user activation, reported as <code>NotAllowedError: play() failed because the user didn’t interact with the document first.</code> Clicking the green flag counts, so an ordinary project is fine; a project that starts on its own must wait for a button press.</p>
       </div>
 
       <div class="troubleshooting">

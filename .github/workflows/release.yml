@@ -36,6 +36,12 @@ jobs:
             dist/tm.js
             dist/composition.js
             dist/runtime.js
+            dist/backend-wasm.js
+            dist/backend-webgpu.js
+            dist/wasm/tfjs-backend-wasm.wasm
+            dist/wasm/tfjs-backend-wasm-simd.wasm
+            dist/wasm/tfjs-backend-wasm-threaded-simd.wasm
+            dist/wasm/tfjs-backend-wasm-threaded-simd.worker.js
             dist/posenet.js
             dist/posenet/mobilenet-v1-075-stride16/model-stride16.json
             dist/posenet/mobilenet-v1-075-stride16/group1-shard1of2.bin

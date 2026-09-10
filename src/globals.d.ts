@@ -27,3 +27,4 @@ declare const Scratch: ScratchApi;
 declare const tmPose: any;
 declare const tmImage: any;
 declare const tmAudio: any;
+declare const tmCompute: any;

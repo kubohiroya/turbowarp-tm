@@ -1,3 +1,4 @@
+import { type ComputeBackendSelection, type ComputeMode } from './compute-backend.js';
 import { type FeatureFlags } from './config/feature-flags.js';
 import { type PoseOverlayConfidenceProperty } from './pose-overlay.js';
 export declare const EXTENSION_ID = "kubohiroyatm";
@@ -15,11 +16,23 @@ export interface TeachableMachineAudioRuntime {
     load(modelURL: string, metadataURL: string): Promise<any>;
 }
 export type TMRuntime = TeachableMachineRuntime;
+/**
+ * The compute-backend control surface published by the reviewed browser runtime
+ * as `globalThis.tmCompute`. Hosts that preload their own runtime can inject an
+ * equivalent object instead.
+ */
+export interface TMComputeController {
+    select(mode?: unknown): Promise<ComputeBackendSelection>;
+    getSelection(): ComputeBackendSelection | null;
+    getBackend(): string;
+}
 export interface TMExtensionDependencies {
     runtime?: TeachableMachineRuntime;
     poseRuntime?: TeachableMachineRuntime;
     imageRuntime?: TeachableMachineRuntime;
     audioRuntime?: TeachableMachineAudioRuntime;
+    compute?: TMComputeController;
+    computeMode?: ComputeMode;
     allowRemoteLibraries?: boolean;
     onAccumulatedPoseChanged?: (event: AccumulatedPoseChangedEventV2) => void;
 }
@@ -35,9 +48,10 @@ export declare const BROWSER_RUNTIME_URL: string;
 export declare function loadScript(src: string): Promise<void>;
 /**
  * Initialize the camera canvas before Teachable Machine or TensorFlow.js requests its context.
- * The legacy backend parameter remains accepted for compatibility, but TM intentionally uses
- * the browser's normal Canvas2D context. Its one-draw/one-read camera path does not demonstrate a
- * repeatable end-to-end benefit from forcing a readback-optimized context.
+ * The camera path is independent of the selected compute mode: whichever backend recognition runs
+ * on, TM intentionally uses the browser's normal Canvas2D context here. Its one-draw/one-read
+ * camera path does not demonstrate a repeatable end-to-end benefit from forcing a
+ * readback-optimized context, and the legacy backend parameter remains accepted for compatibility.
  */
 export declare function initializeCameraReadbackContext(canvas: unknown, _tensorflowBackend?: string | null): CanvasRenderingContext2D;
 export declare class TMExtension {
@@ -83,6 +97,13 @@ export declare class TMExtension {
                     value: RecognitionMode;
                 }[];
             };
+            computeModeMenu: {
+                acceptReporters: boolean;
+                items: {
+                    text: any;
+                    value: "auto" | "webgpu" | "webgl" | "wasm" | "cpu";
+                }[];
+            };
             poseOverlayVisibilityMenu: {
                 acceptReporters: boolean;
                 items: {
@@ -114,6 +135,18 @@ export declare class TMExtension {
     setLastError(error: any): void;
     setRecognitionMode(args: any): void;
     recognitionModeReporter(): any;
+    activeComputeRuntime(): TMComputeController | null;
+    /**
+     * TensorFlow.js binds every tensor to the backend that was active when the
+     * tensor was created, so the backend is negotiated before any model loads. A
+     * host that preloads a runtime without a compute controller keeps whatever
+     * backend TensorFlow.js selected for itself.
+     */
+    ensureComputeBackend(): Promise<ComputeBackendSelection | null>;
+    setComputeMode(args: any): Promise<void>;
+    releaseOwnedModel(model: object): Promise<void>;
+    computeModeReporter(): any;
+    computeBackendReporter(): any;
     setModelURL(args: any): void;
     activeRuntime(): TeachableMachineRuntime | TeachableMachineAudioRuntime | null;
     ensureLibrariesLoaded(): Promise<void>;

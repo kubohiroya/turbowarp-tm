@@ -1,2 +1,25 @@
 allowBuilds:
+  core-js: false
   esbuild: false
+
+# The Teachable Machine and TensorFlow.js model packages still pin their peer
+# ranges to the TensorFlow.js 1.x/3.x era. TurboWarp TM ships one TensorFlow.js
+# 4.22.0 module graph, so every package in the tree resolves to that one copy.
+overrides:
+  '@tensorflow/tfjs': 4.22.0
+  '@tensorflow/tfjs-core': 4.22.0
+  '@tensorflow/tfjs-converter': 4.22.0
+  '@tensorflow/tfjs-layers': 4.22.0
+  '@tensorflow/tfjs-data': 4.22.0
+  '@tensorflow/tfjs-backend-cpu': 4.22.0
+  '@tensorflow/tfjs-backend-webgl': 4.22.0
+
+peerDependencyRules:
+  allowedVersions:
+    '@teachablemachine/image>@tensorflow/tfjs': 4.22.0
+    '@teachablemachine/pose>@tensorflow/tfjs': 4.22.0
+    '@tensorflow-models/posenet>@tensorflow/tfjs-core': 4.22.0
+    '@tensorflow-models/posenet>@tensorflow/tfjs-converter': 4.22.0
+    '@tensorflow-models/speech-commands>@tensorflow/tfjs-core': 4.22.0
+    '@tensorflow-models/speech-commands>@tensorflow/tfjs-layers': 4.22.0
+    '@tensorflow-models/speech-commands>@tensorflow/tfjs-data': 4.22.0

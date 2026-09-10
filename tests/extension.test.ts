@@ -152,7 +152,7 @@ describe('TMExtension', () => {
     expect(iconSvg).not.toContain('<rect');
     expect(new TMExtension().versionReporter()).toBe(VERSION);
     expect(VERSION).toBe(`${packageMetadata.version}-typescript`);
-    expect(info.blocks).toHaveLength(39);
+    expect(info.blocks).toHaveLength(42);
     const opcodes = info.blocks.map((block) => block.opcode);
     expect(opcodes).toEqual(expect.arrayContaining([
       'setRecognitionMode',
@@ -183,7 +183,7 @@ describe('TMExtension', () => {
     }).getInfo() as {
       blocks: Array<{opcode: string}>;
     };
-    expect(info.blocks).toHaveLength(39);
+    expect(info.blocks).toHaveLength(42);
     expect(info.blocks.map((block) => block.opcode)).toEqual(expect.arrayContaining([
       'setAccumulatedPoseParameters',
       'setAccumulatedPoseThreshold',
@@ -206,9 +206,9 @@ describe('TMExtension', () => {
       };
     };
 
-    expect(disabled.blocks).toHaveLength(33);
+    expect(disabled.blocks).toHaveLength(36);
     expect(disabled.blocks.map((block) => block.opcode)).not.toContain('setPoseJointStyle');
-    expect(enabled.blocks).toHaveLength(39);
+    expect(enabled.blocks).toHaveLength(42);
     expect(enabled.blocks.map((block) => block.opcode)).toEqual(expect.arrayContaining([
       'setPoseOverlayVisibility',
       'isPoseOverlayVisible',
@@ -1096,5 +1096,185 @@ describe('TMExtension', () => {
     expect(extension.loopGeneration).toBe(4);
     expect(extension.loopStarted).toBe(false);
     expect(extension.cameraRunning).toBe(false);
+  });
+});
+
+function computeController(
+  overrides: {
+    backend?: string;
+    requested?: string | null;
+    fallback?: boolean;
+    mode?: string;
+  } = {}
+) {
+  const selection = {
+    mode: overrides.mode ?? 'auto',
+    backend: overrides.backend ?? 'webgpu',
+    requested: overrides.requested ?? null,
+    fallback: overrides.fallback ?? false,
+    attempts: []
+  };
+  let current: typeof selection | null = null;
+  const select = vi.fn(async (mode?: unknown) => {
+    current = {...selection, ...(mode === undefined ? {} : {mode: String(mode)})};
+    return current;
+  });
+  return {
+    select,
+    getSelection: () => current,
+    getBackend: () => current?.backend ?? 'cpu'
+  };
+}
+
+describe('TMExtension compute backend', () => {
+  it('negotiates a backend before a model is loaded onto it', async () => {
+    const order: string[] = [];
+    const compute = computeController({backend: 'webgpu'});
+    compute.select.mockImplementation(async () => {
+      order.push('select');
+      return {mode: 'auto', backend: 'webgpu', requested: null, fallback: false, attempts: []};
+    });
+    const load = vi.fn(async () => {
+      order.push('load');
+      return {estimatePose: vi.fn(), predict: vi.fn()};
+    });
+    const extension = new TMExtension({}, {
+      runtime: {Webcam: class {}, load} as never,
+      compute: compute as never
+    });
+
+    extension.setModelURL({URL: 'https://models.test/abc'});
+    await extension.loadModel();
+
+    expect(order).toEqual(['select', 'load']);
+    expect(compute.select).toHaveBeenCalledWith('auto');
+    expect(extension.computeModeReporter()).toBe('auto');
+    expect(extension.computeBackendReporter()).toBe('webgpu');
+  });
+
+  it('reports a fallback backend through the last error', async () => {
+    const compute = computeController({
+      mode: 'webgpu',
+      backend: 'webgl',
+      requested: 'webgpu',
+      fallback: true
+    });
+    const extension = new TMExtension({}, {
+      runtime: {Webcam: class {}} as never,
+      compute: compute as never,
+      computeMode: 'webgpu'
+    });
+
+    await extension.ensureComputeBackend();
+
+    expect(extension.computeBackendReporter()).toBe('webgl');
+    expect(extension.lastErrorReporter()).toContain('webgpu');
+    expect(extension.lastErrorReporter()).toContain('webgl');
+  });
+
+  it('refuses a compute mode change while recognition is running', async () => {
+    const extension = new TMExtension({}, {
+      runtime: {Webcam: class {}} as never,
+      compute: computeController() as never
+    });
+    extension.recognizing = true;
+
+    await expect(extension.setComputeMode({MODE: 'wasm'})).rejects.toThrow(
+      /Stop recognition before changing the compute mode/u
+    );
+    expect(extension.computeModeReporter()).toBe('auto');
+  });
+
+  it('releases a URL-loaded model so it can be rebuilt on the new backend', async () => {
+    const compute = computeController({backend: 'webgl'});
+    const dispose = vi.fn();
+    const extension = new TMExtension({}, {
+      runtime: {
+        Webcam: class {},
+        load: vi.fn(async () => ({dispose, estimatePose: vi.fn(), predict: vi.fn()}))
+      } as never,
+      compute: compute as never
+    });
+    extension.setModelURL({URL: 'https://models.test/abc'});
+    await extension.loadModel();
+    expect(extension.isModelLoaded()).toBe(true);
+
+    await extension.setComputeMode({MODE: 'wasm'});
+
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(extension.isModelLoaded()).toBe(false);
+    expect(extension.computeModeReporter()).toBe('wasm');
+    expect(compute.select).toHaveBeenLastCalledWith('wasm');
+  });
+
+  it('keeps a prepared model instead of disposing state it does not own', async () => {
+    const extension = new TMExtension({}, {
+      runtime: {Webcam: class {}} as never,
+      compute: computeController() as never
+    });
+    const prepared = {dispose: vi.fn(), estimatePose: vi.fn(), predict: vi.fn()};
+    extension.usePreparedModel(prepared);
+
+    await expect(extension.setComputeMode({MODE: 'cpu'})).rejects.toThrow(
+      /Release the prepared model/u
+    );
+    expect(prepared.dispose).not.toHaveBeenCalled();
+    expect(extension.isModelLoaded()).toBe(true);
+    expect(extension.computeModeReporter()).toBe('auto');
+  });
+
+  it('ignores an unknown mode instead of dropping the loaded model', async () => {
+    const extension = new TMExtension({}, {
+      runtime: {Webcam: class {}} as never,
+      compute: computeController() as never,
+      computeMode: 'wasm'
+    });
+
+    await extension.setComputeMode({MODE: 'quantum'});
+
+    expect(extension.computeModeReporter()).toBe('wasm');
+  });
+
+  it('uses the compute controller the browser runtime published', async () => {
+    const compute = computeController({backend: 'wasm'});
+    vi.stubGlobal('tf', {});
+    vi.stubGlobal('tmPose', {Webcam: class {}});
+    vi.stubGlobal('tmImage', {Webcam: class {}});
+    vi.stubGlobal('tmAudio', {});
+    vi.stubGlobal('tmCompute', compute);
+
+    const extension = new TMExtension();
+    await extension.ensureLibrariesLoaded();
+
+    expect(compute.select).toHaveBeenCalledWith('auto');
+    expect(extension.computeBackendReporter()).toBe('wasm');
+  });
+
+  it('leaves the backend alone when no compute controller is available', async () => {
+    vi.stubGlobal('tf', {});
+    vi.stubGlobal('tmPose', {Webcam: class {}});
+    vi.stubGlobal('tmImage', {Webcam: class {}});
+    vi.stubGlobal('tmAudio', {});
+
+    const extension = new TMExtension();
+    await extension.ensureLibrariesLoaded();
+
+    expect(await extension.ensureComputeBackend()).toBeNull();
+    expect(extension.computeBackendReporter()).toBe('');
+  });
+
+  it('offers every compute mode in the block menu', () => {
+    const info = new TMExtension().getInfo() as {
+      menus: {computeModeMenu: {acceptReporters: boolean; items: Array<{value: string}>}};
+    };
+
+    expect(info.menus.computeModeMenu.acceptReporters).toBe(true);
+    expect(info.menus.computeModeMenu.items.map((item) => item.value)).toEqual([
+      'auto',
+      'webgpu',
+      'webgl',
+      'wasm',
+      'cpu'
+    ]);
   });
 });

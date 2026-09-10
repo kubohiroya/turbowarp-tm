@@ -1,6 +1,8 @@
-import { type AccumulatedPoseChangedEventV2 } from './extension.js';
+import { type ComputeBackendSelection, type ComputeMode } from './compute-backend.js';
+import { type AccumulatedPoseChangedEventV2, type TMComputeController } from './extension.js';
 import { type PoseBoneStyle, type PoseJointStyle, type PoseKeypointName, type PoseOverlayConfidenceScaling } from './pose-overlay.js';
-export type { AccumulatedPoseChangedEventV2 } from './extension.js';
+export type { AccumulatedPoseChangedEventV2, TMComputeController } from './extension.js';
+export type { ComputeBackendAttempt, ComputeBackendName, ComputeBackendSelection, ComputeMode } from './compute-backend.js';
 export type { PoseBoneStyle, PoseJointStyle, PoseKeypointName, PoseOverlayConfidenceScaling } from './pose-overlay.js';
 export interface TMCompositionRuntime {
     Webcam: new (width: number, height: number, flipHorizontal: boolean) => unknown;
@@ -80,11 +82,20 @@ export interface TMComposition {
     accumulatedScore(): number;
     accumulatedScoreOf(name: unknown): number;
     subscribeAccumulatedPose(listener: AccumulatedPoseListener): () => void;
+    selectComputeBackend(mode?: unknown): Promise<ComputeBackendSelection>;
+    getComputeBackend(): ComputeBackendSelection | null;
 }
 export interface TMCompositionOptions {
     runtime: TMCompositionRuntime;
     createFile?: (bytes: Uint8Array, name: string, mimeType: string) => File;
     modelInitializationPolicy?: PoseModelInitializationPolicy;
     parallelModelInitialization?: boolean;
+    /**
+     * The compute-backend controller published by the reviewed browser runtime as
+     * `globalThis.tmCompute`. Without it the composition keeps whatever backend
+     * TensorFlow.js selected for itself.
+     */
+    compute?: TMComputeController;
+    computeMode?: ComputeMode;
 }
 export declare function createTMComposition(options: TMCompositionOptions): TMComposition;

@@ -1,13 +1,22 @@
 # Third-party notices
 
-The reviewed browser runtime (`dist/runtime.js`) and fixed offline PoseNet model
-supply (`dist/posenet/`) include the following software and model data:
+The reviewed browser runtime (`dist/runtime.js`), the optional compute backend
+bundles (`dist/backend-wasm.js`, `dist/backend-webgpu.js`, `dist/wasm/`), and the
+fixed offline PoseNet model supply (`dist/posenet/`) include the following
+software and model data:
 
-- TensorFlow.js 1.3.1, Copyright Google LLC, licensed under Apache-2.0.
-  Source: https://github.com/tensorflow/tfjs/tree/tfjs-v1.3.1
-- TensorFlow.js Speech Commands 0.4.0, Copyright Google LLC, licensed under
-  Apache-2.0. Source: https://github.com/tensorflow/tfjs-models/tree/v0.4.0/speech-commands
-- Teachable Machine Pose 0.8.3, Copyright Google LLC, licensed under
+- TensorFlow.js 4.22.0, Copyright Google LLC, licensed under Apache-2.0.
+  Source: https://github.com/tensorflow/tfjs/tree/tfjs-v4.22.0
+- TensorFlow.js WASM backend 4.22.0, including the `tfjs-backend-wasm*.wasm`
+  binaries and the threaded worker, Copyright Google LLC, licensed under
+  Apache-2.0. Source: https://github.com/tensorflow/tfjs/tree/tfjs-v4.22.0/tfjs-backend-wasm
+- TensorFlow.js WebGPU backend 4.22.0, Copyright Google LLC, licensed under
+  Apache-2.0. Source: https://github.com/tensorflow/tfjs/tree/tfjs-v4.22.0/tfjs-backend-webgpu
+- TensorFlow.js Speech Commands 0.5.4, Copyright Google LLC, licensed under
+  Apache-2.0. Source: https://github.com/tensorflow/tfjs-models/tree/v0.5.4/speech-commands
+- Teachable Machine Pose 0.8.6, Copyright Google LLC, licensed under
+  Apache-2.0. Source: https://github.com/googlecreativelab/teachablemachine-community-js
+- Teachable Machine Image 0.8.5, Copyright Google LLC, licensed under
   Apache-2.0. Source: https://github.com/googlecreativelab/teachablemachine-community-js
 - PoseNet 2.2.2 runtime and MobileNetV1 0.75 / stride 16 model data,
   Copyright Google LLC, licensed under Apache-2.0.

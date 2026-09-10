@@ -1432,3 +1432,101 @@ describe('TM composition API', () => {
     await composition.releaseAll();
   });
 });
+
+describe('TM composition compute backend', () => {
+  function computeController(backend = 'webgpu') {
+    let selection: unknown = null;
+    const select = vi.fn(async (mode?: unknown) => {
+      selection = {
+        mode: mode === undefined ? 'auto' : String(mode),
+        backend,
+        requested: null,
+        fallback: false,
+        attempts: []
+      };
+      return selection;
+    });
+    return {select, getSelection: () => selection, getBackend: () => backend};
+  }
+
+  it('settles the backend before the first model allocates tensors', async () => {
+    const order: string[] = [];
+    const compute = computeController('wasm');
+    compute.select.mockImplementation(async () => {
+      order.push('select');
+      return {mode: 'auto', backend: 'wasm', requested: null, fallback: false, attempts: []};
+    });
+    const composition = createTMComposition({
+      runtime: {
+        Webcam: class {},
+        loadFromFiles: vi.fn(async () => {
+          order.push('load');
+          return model();
+        })
+      },
+      createFile,
+      compute: compute as never
+    });
+
+    await composition.registerPoseModel({name: 'pose', files: files()});
+
+    expect(order).toEqual(['select', 'load']);
+    expect(composition.getComputeBackend()).toMatchObject({backend: 'wasm'});
+  });
+
+  it('refuses a backend switch while registered models hold tensors', async () => {
+    const composition = createTMComposition({
+      runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => model())},
+      createFile,
+      compute: computeController() as never
+    });
+    await composition.registerPoseModel({name: 'pose', files: files()});
+
+    await expect(composition.selectComputeBackend('wasm')).rejects.toMatchObject({
+      code: 'TM-COMPOSITION-018'
+    });
+
+    await composition.releasePoseModel('pose');
+    await expect(composition.selectComputeBackend('wasm')).resolves.toMatchObject({
+      backend: 'webgpu'
+    });
+  });
+
+  it('rejects an unknown compute mode and a missing controller', async () => {
+    const withoutCompute = createTMComposition({
+      runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => model())},
+      createFile
+    });
+
+    await expect(withoutCompute.selectComputeBackend('wasm')).rejects.toMatchObject({
+      code: 'TM-COMPOSITION-017'
+    });
+    expect(withoutCompute.getComputeBackend()).toBeNull();
+    expect(() =>
+      createTMComposition({
+        runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
+        computeMode: 'quantum' as never
+      })
+    ).toThrow(/Unknown compute mode/u);
+    expect(() =>
+      createTMComposition({
+        runtime: {Webcam: class {}, loadFromFiles: vi.fn()},
+        compute: {} as never
+      })
+    ).toThrow(/compute controller/u);
+  });
+
+  it('keeps the requested mode from creation', async () => {
+    const compute = computeController('wasm');
+    const composition = createTMComposition({
+      runtime: {Webcam: class {}, loadFromFiles: vi.fn(async () => model())},
+      createFile,
+      compute: compute as never,
+      computeMode: 'wasm'
+    });
+
+    await composition.registerPoseModel({name: 'pose', files: files()});
+
+    expect(compute.select).toHaveBeenCalledWith('wasm');
+  });
+});

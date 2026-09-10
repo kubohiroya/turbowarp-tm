@@ -1,4 +1,10 @@
 import definitions from './block-definitions.json' with {type: 'json'};
+import {
+  COMPUTE_MODES,
+  normalizeComputeMode,
+  type ComputeBackendSelection,
+  type ComputeMode
+} from './compute-backend.js';
 import {FEATURE_FLAGS, type FeatureFlags} from './config/feature-flags.js';
 import {
   confidenceMultiplier,
@@ -36,11 +42,24 @@ export interface TeachableMachineAudioRuntime {
 
 export type TMRuntime = TeachableMachineRuntime;
 
+/**
+ * The compute-backend control surface published by the reviewed browser runtime
+ * as `globalThis.tmCompute`. Hosts that preload their own runtime can inject an
+ * equivalent object instead.
+ */
+export interface TMComputeController {
+  select(mode?: unknown): Promise<ComputeBackendSelection>;
+  getSelection(): ComputeBackendSelection | null;
+  getBackend(): string;
+}
+
 export interface TMExtensionDependencies {
   runtime?: TeachableMachineRuntime;
   poseRuntime?: TeachableMachineRuntime;
   imageRuntime?: TeachableMachineRuntime;
   audioRuntime?: TeachableMachineAudioRuntime;
+  compute?: TMComputeController;
+  computeMode?: ComputeMode;
   allowRemoteLibraries?: boolean;
   onAccumulatedPoseChanged?: (event: AccumulatedPoseChangedEventV2) => void;
 }
@@ -86,6 +105,10 @@ const PREVIEW_MIRRORING_ALIASES: Record<string, boolean> = {
   '左右反転': true,
   'そのまま': false
 };
+
+const COMPUTE_MODE_ITEMS: ReadonlyArray<{text: string; value: ComputeMode}> = COMPUTE_MODES.map(
+  (value) => ({text: value, value})
+);
 
 const RECOGNITION_MODE_ITEMS: ReadonlyArray<{text: string; value: RecognitionMode}> = [
   {text: 'pose', value: 'pose'},
@@ -286,9 +309,10 @@ function isDocumentHidden(): boolean {
 
 /**
  * Initialize the camera canvas before Teachable Machine or TensorFlow.js requests its context.
- * The legacy backend parameter remains accepted for compatibility, but TM intentionally uses
- * the browser's normal Canvas2D context. Its one-draw/one-read camera path does not demonstrate a
- * repeatable end-to-end benefit from forcing a readback-optimized context.
+ * The camera path is independent of the selected compute mode: whichever backend recognition runs
+ * on, TM intentionally uses the browser's normal Canvas2D context here. Its one-draw/one-read
+ * camera path does not demonstrate a repeatable end-to-end benefit from forcing a
+ * readback-optimized context, and the legacy backend parameter remains accepted for compatibility.
  */
 export function initializeCameraReadbackContext(
   canvas: unknown,
@@ -317,6 +341,10 @@ export class TMExtension {
     this.tmPoseRuntime = dependencies.poseRuntime ?? dependencies.runtime ?? null;
     this.tmImageRuntime = dependencies.imageRuntime ?? null;
     this.tmAudioRuntime = dependencies.audioRuntime ?? null;
+    this.tmComputeRuntime = dependencies.compute ?? null;
+    this.computeMode = normalizeComputeMode(dependencies.computeMode);
+    this.computeSelection = null;
+    this.modelOwnedByExtension = false;
     this.allowRemoteLibraries = dependencies.allowRemoteLibraries ?? true;
     this.onAccumulatedPoseChanged = dependencies.onAccumulatedPoseChanged ?? null;
     this.recognitionMode = 'pose';
@@ -414,6 +442,13 @@ export class TMExtension {
             value: item.value
           }))
         },
+        computeModeMenu: {
+          acceptReporters: true,
+          items: COMPUTE_MODE_ITEMS.map((item) => ({
+            text: Scratch.translate(item.text),
+            value: item.value
+          }))
+        },
         poseOverlayVisibilityMenu: {
           acceptReporters: true,
           items: POSE_OVERLAY_VISIBILITY_ITEMS.map((item) => ({
@@ -454,6 +489,7 @@ export class TMExtension {
     }
     this.recognitionMode = mode;
     this.model = null;
+    this.modelOwnedByExtension = false;
     this.modelURL = '';
     this.modelLoadMs = 0;
     this.firstRecognitionMs = 0;
@@ -466,6 +502,78 @@ export class TMExtension {
 
   recognitionModeReporter() {
     return this.recognitionMode;
+  }
+
+  activeComputeRuntime(): TMComputeController | null {
+    if (this.tmComputeRuntime) return this.tmComputeRuntime;
+    const runtime = (globalThis as {tmCompute?: TMComputeController}).tmCompute;
+    return runtime && typeof runtime.select === 'function' ? runtime : null;
+  }
+
+  /**
+   * TensorFlow.js binds every tensor to the backend that was active when the
+   * tensor was created, so the backend is negotiated before any model loads. A
+   * host that preloads a runtime without a compute controller keeps whatever
+   * backend TensorFlow.js selected for itself.
+   */
+  async ensureComputeBackend(): Promise<ComputeBackendSelection | null> {
+    const compute = this.activeComputeRuntime();
+    if (!compute) return null;
+    const selection = await compute.select(this.computeMode);
+    this.computeSelection = selection;
+    if (selection.fallback) {
+      this.setLastError(
+        new Error(
+          `Teachable Machine: The ${selection.requested} compute backend was unavailable, ` +
+            `so ${selection.backend} is in use.`
+        )
+      );
+    }
+    return selection;
+  }
+
+  async setComputeMode(args) {
+    const mode = normalizeComputeMode(args.MODE, this.computeMode);
+    if (mode === this.computeMode) return;
+    if (this.recognizing) {
+      throw new Error('Teachable Machine: Stop recognition before changing the compute mode.');
+    }
+    if (this.model && !this.modelOwnedByExtension) {
+      throw new Error(
+        'Teachable Machine: Release the prepared model before changing the compute mode.'
+      );
+    }
+    const previousModel = this.model;
+    this.computeMode = mode;
+    this.computeSelection = null;
+    this.model = null;
+    this.modelOwnedByExtension = false;
+    this.modelLoadMs = 0;
+    this.firstRecognitionMs = 0;
+    // Model weights live in the memory of the backend that loaded them, so the
+    // previous copy is released instead of being stranded in a backend that
+    // nothing reads from again.
+    if (previousModel) await this.releaseOwnedModel(previousModel);
+    if (this.activeComputeRuntime()) await this.ensureComputeBackend();
+  }
+
+  async releaseOwnedModel(model: object): Promise<void> {
+    try {
+      await this.waitForPreparedModelIdle(model);
+      await (model as {dispose?: () => void | Promise<void>}).dispose?.();
+    } catch (error) {
+      this.setLastError(error);
+    }
+  }
+
+  computeModeReporter() {
+    return this.computeMode;
+  }
+
+  computeBackendReporter() {
+    const compute = this.activeComputeRuntime();
+    if (!compute) return '';
+    return this.computeSelection?.backend ?? compute.getBackend() ?? '';
   }
 
   setModelURL(args) {
@@ -482,7 +590,11 @@ export class TMExtension {
   }
 
   async ensureLibrariesLoaded() {
-    if (this.activeRuntime()) return;
+    if (this.activeRuntime()) {
+      // A host without a compute controller keeps its original scheduling.
+      if (this.activeComputeRuntime()) await this.ensureComputeBackend();
+      return;
+    }
     if (!this.allowRemoteLibraries) {
       throw new Error('Teachable Machine: A preloaded runtime is required.');
     }
@@ -505,6 +617,7 @@ export class TMExtension {
     this.tmPoseRuntime = globalThis.tmPose;
     this.tmImageRuntime = globalThis.tmImage;
     this.tmAudioRuntime = globalThis.tmAudio;
+    await this.ensureComputeBackend();
   }
 
   cleanupCameraResources() {
@@ -816,6 +929,7 @@ export class TMExtension {
         this.modelURL + 'model.json',
         this.modelURL + 'metadata.json'
       );
+      this.modelOwnedByExtension = true;
       this.modelLoadMs = Math.round(performance.now() - startedAt);
     } catch (error) {
       this.setLastError(error);
@@ -833,6 +947,7 @@ export class TMExtension {
       throw new Error('TM: Stop recognition before changing the active model.');
     }
     this.model = model;
+    this.modelOwnedByExtension = false;
     this.modelURL = '';
     this.modelLoadMs = 0;
     this.firstRecognitionMs = 0;
@@ -842,6 +957,7 @@ export class TMExtension {
     if (model !== undefined && this.model !== model) return;
     this.stopRecognition();
     this.model = null;
+    this.modelOwnedByExtension = false;
     this.modelURL = '';
     this.modelLoadMs = 0;
     this.firstRecognitionMs = 0;

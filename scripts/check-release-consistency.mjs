@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import process from 'node:process';
 
 const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
+const dependencies = packageMetadata.devDependencies;
 const version = packageMetadata.version;
 const pinnedPackage = `${packageMetadata.name}@${version}`;
 const docsBrandName = 'Teachable Machine';
@@ -45,9 +46,13 @@ if (!browserRuntime.includes(`version:"${version}"`)) {
   errors.push(`dist/runtime.js must embed package version ${version}`);
 }
 if (
-  !browserRuntime.startsWith('/*! @license Includes TensorFlow.js 1.3.1') ||
-  !browserRuntime.includes('Speech Commands 0.4.0') ||
-  !browserRuntime.includes('PoseNet 2.2.2') ||
+  !browserRuntime.startsWith(
+    `/*! @license Includes TensorFlow.js ${dependencies['@tensorflow/tfjs']}`
+  ) ||
+  !browserRuntime.includes(
+    `Speech Commands ${dependencies['@tensorflow-models/speech-commands']}`
+  ) ||
+  !browserRuntime.includes(`PoseNet ${dependencies['@tensorflow-models/posenet']}`) ||
   !browserRuntime.includes(`/blob/v${version}/THIRD_PARTY_NOTICES.md`)
 ) {
   errors.push('dist/runtime.js must retain the versioned third-party license notice');
@@ -59,6 +64,60 @@ if (
     1
 ) {
   errors.push('dist/runtime.js must contain one TensorFlow.js browser platform and WebGL backend');
+}
+
+// The optional backends resolve TensorFlow.js against the runtime's global
+// instance, so a second copy of the core would show up as its own registry.
+for (const [path, component] of [
+  ['dist/backend-wasm.js', `TensorFlow.js WASM backend ${dependencies['@tensorflow/tfjs-backend-wasm']}`],
+  [
+    'dist/backend-webgpu.js',
+    `TensorFlow.js WebGPU backend ${dependencies['@tensorflow/tfjs-backend-webgpu']}`
+  ]
+]) {
+  const bundle = await readFile(path, 'utf8');
+  if (!bundle.startsWith(`/*! @license Includes ${component} (Apache-2.0).`)) {
+    errors.push(`${path} must start with the versioned third-party license notice`);
+  }
+  if (!bundle.includes(`/blob/v${version}/THIRD_PARTY_NOTICES.md`)) {
+    errors.push(`${path} must link the ${version} third-party notice`);
+  }
+  if (bundle.includes(' has already been set. Overwriting the platform with ')) {
+    errors.push(`${path} must not bundle a second TensorFlow.js core`);
+  }
+}
+
+const wasmFiles = [
+  {
+    path: 'tfjs-backend-wasm.wasm',
+    size: 311_123,
+    sha256: '70a5d516060464e5269f01c74bac1772d6b8ab6cb612acf16b5cdaf61f78d892'
+  },
+  {
+    path: 'tfjs-backend-wasm-simd.wasm',
+    size: 424_594,
+    sha256: '77ebb28a6d34f371dbbf2086b7f2de8994acd8ea5a3cf1fa24d2c26c840cac7b'
+  },
+  {
+    path: 'tfjs-backend-wasm-threaded-simd.wasm',
+    size: 435_643,
+    sha256: 'c052228d4bef185c27bbe59a9e029570c78bbb9f08b3cb46b597851650373de2'
+  },
+  {
+    path: 'tfjs-backend-wasm-threaded-simd.worker.js',
+    size: 3_115,
+    sha256: '2d56f7279a8515423f59e3a8a5793d27aee4fcf4c9f955c28c6d38a4462f9472'
+  }
+];
+for (const expected of wasmFiles) {
+  const path = `dist/wasm/${expected.path}`;
+  const bytes = await readFile(path);
+  if (
+    bytes.byteLength !== expected.size ||
+    createHash('sha256').update(bytes).digest('hex') !== expected.sha256
+  ) {
+    errors.push(`${path} must match the pinned TensorFlow.js WASM supply`);
+  }
 }
 
 const notices = await readFile('THIRD_PARTY_NOTICES.md', 'utf8');

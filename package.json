@@ -1,6 +1,6 @@
 {
   "name": "@kubohiroya/turbowarp-tm",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
   "author": "Hiroya Kubo <hiroya@cuc.ac.jp>",
   "license": "MPL-2.0",
@@ -22,6 +22,9 @@
       "import": "./dist/posenet.js"
     },
     "./posenet-assets/*": "./dist/posenet/mobilenet-v1-075-stride16/*",
+    "./wasm-assets/*": "./dist/wasm/*",
+    "./dist/backend-wasm.js": "./dist/backend-wasm.js",
+    "./dist/backend-webgpu.js": "./dist/backend-webgpu.js",
     "./runtime": "./dist/runtime.js",
     "./dist/tm.js": "./dist/tm.js",
     "./package.json": "./package.json"
@@ -43,11 +46,13 @@
   "scripts": {
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
-    "build": "pnpm build:extension && pnpm build:composition && pnpm build:runtime && pnpm build:posenet && pnpm build:types",
+    "build": "pnpm build:extension && pnpm build:composition && pnpm build:runtime && pnpm build:backends && pnpm build:posenet && pnpm build:notices && pnpm build:types",
     "build:extension": "vite build",
     "build:composition": "vite build --config vite.composition.config.ts",
-    "build:runtime": "vite build --config vite.runtime.config.ts && node scripts/copy-third-party-notices.mjs",
+    "build:runtime": "vite build --config vite.runtime.config.ts",
+    "build:backends": "vite build --config vite.backend-wasm.config.ts && vite build --config vite.backend-webgpu.config.ts && node scripts/copy-wasm-assets.mjs",
     "build:posenet": "vite build --config vite.posenet.config.ts && node scripts/copy-posenet-assets.mjs",
+    "build:notices": "node scripts/copy-third-party-notices.mjs",
     "build:types": "tsc --project tsconfig.build.json",
     "types:composition:check": "tsc --project tsconfig.composition-consumer.json",
     "types:posenet:check": "tsc --project tsconfig.posenet-consumer.json",
@@ -65,11 +70,13 @@
   },
   "devDependencies": {
     "@kubohiroya/vite-plugin-turbowarp-extension": "0.1.0",
-    "@tensorflow-models/speech-commands": "0.4.0",
     "@teachablemachine/image": "0.8.5",
-    "@teachablemachine/pose": "0.8.3",
+    "@teachablemachine/pose": "0.8.6",
     "@tensorflow-models/posenet": "2.2.2",
-    "@tensorflow/tfjs": "1.3.1",
+    "@tensorflow-models/speech-commands": "0.5.4",
+    "@tensorflow/tfjs": "4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "4.22.0",
+    "@tensorflow/tfjs-backend-webgpu": "4.22.0",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vitest": "^4.0.14"

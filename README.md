@@ -41,7 +41,8 @@ preview layout, score behavior, privacy, and troubleshooting. English is the def
 - a published Teachable Machine Pose, Image, or Audio model URL;
 - a camera or microphone and permission to use it in the browser;
 - network access for the reviewed Teachable Machine browser runtime and the model files;
-- TurboWarp's **Run extension without sandbox** option.
+- TurboWarp's **Run without sandbox** option, which is only available when the extension is
+  loaded from a file (see [Installation](#installation)).
 
 > [!IMPORTANT]
 > This is an unsandboxed extension because it needs camera, microphone, and stage access. Only load extension
@@ -49,29 +50,40 @@ preview layout, score behavior, privacy, and troubleshooting. English is the def
 
 ## Installation
 
-Download [`dist/tm.js`](dist/tm.js), then load it from TurboWarp's custom extension dialog
-with **Run extension without sandbox** enabled.
+Download [`dist/tm.js`](dist/tm.js), then in TurboWarp's custom extension dialog open the
+**Files** tab, select that file, and keep **Run without sandbox** enabled.
 
-The browser-ready, version-pinned build is also available from jsDelivr:
+> [!IMPORTANT]
+> The dialog's **URL** tab cannot load this extension. TurboWarp always sandboxes an extension
+> loaded from an untrusted URL — the URL tab has no **Run without sandbox** option at all — and TM
+> refuses to start sandboxed because it needs camera, microphone, and stage access. Pasting the
+> jsDelivr link below into the URL tab leaves the dialog waiting with no message on screen and only
+> `TM must run without the extension sandbox.` in the browser console. Download the file and use
+> the **Files** tab instead.
+
+That download, and the artifact a composite runtime fetches, is the version-pinned build on
+jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@2.0.0/dist/tm.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.0.0/dist/tm.js
 ```
 
-The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 1.3.1
-module graph together with Teachable Machine Pose 0.8.3, Teachable Machine Image 0.8.5, and
-TensorFlow.js Speech Commands 0.4.0.
+The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 4.22.0
+module graph together with Teachable Machine Pose 0.8.6, Teachable Machine Image 0.8.5, and
+TensorFlow.js Speech Commands 0.5.4. That runtime ships the WebGL and CPU kernels; the WebGPU and
+WebAssembly backends live in separate bundles next to it and are fetched only when a project uses
+them. See [Compute backends](#compute-backends).
 Composite runtimes can load or embed the same artifact without rewriting a minified third-party
 bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@2.0.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.0.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tm@2.0.0
+pnpm add --save-exact @kubohiroya/turbowarp-tm@3.0.0
 ```
 
 ### Offline PoseNet bundle API
@@ -181,7 +193,7 @@ Repeated `latest-needed` registrations with the same name, byte-identical files,
 remain separate demands so cancelling one caller cannot silently cancel another caller's work.
 
 Pass an optional `AbortSignal` to `registerPoseModel()` when the host no longer needs that demand. A
-queued request rejects with `AbortError` without invoking the runtime. TensorFlow.js 1.3.1 and Web
+queued request rejects with `AbortError` without invoking the runtime. TensorFlow.js 4.22.0 and Web
 Crypto do not expose physical cancellation for every operation already in progress, so a running
 request becomes stale immediately, starts no later phase where the runtime provides a boundary, and
 disposes every late classifier/PoseNet result exactly once before its promise settles. A cancelled
@@ -254,7 +266,7 @@ rendering and model input continue to use the same canvas, and no downstream Can
 Console patch is required. Reconsider the hint only with a reproducible benchmark of this exact
 camera path.
 
-Teachable Machine Pose 0.8.3 exposes the classifier as `CustomPoseNet.model` and PoseNet as
+Teachable Machine Pose 0.8.6 exposes the classifier as `CustomPoseNet.model` and PoseNet as
 `CustomPoseNet.posenetModel`, while its top-level `dispose()` releases PoseNet only. The composition
 therefore disconnects an active model from recognition first and disposes those two public
 resources separately and exactly once; it does not call the incomplete top-level disposer for this
@@ -289,6 +301,33 @@ published only when the selected pose name changes, including one transition to 
 reset or stop; score-only changes do not publish another event. The Standalone extension keeps its
 temporal-scoring and event feature flags off by default.
 
+## Upgrading from 2.x
+
+The block surface, the composition API, and the offline PoseNet bundle API are unchanged. A project
+built on 2.x keeps working after swapping the extension file, and three compute blocks appear that
+2.x did not have.
+
+What changed is the runtime this extension bundles.
+
+| | 2.x | 3.0.0 |
+|---|---|---|
+| TensorFlow.js | 1.3.1 | 4.22.0 |
+| Teachable Machine Pose | 0.8.3 | 0.8.6 |
+| TensorFlow.js Speech Commands | 0.4.0 | 0.5.4 |
+| Compute backends | WebGL only | WebGPU, WebGL, WASM, CPU, negotiated at load |
+
+That runtime is published as `globalThis.tf`, so a host application reading it directly moves from
+the TensorFlow.js 1.x API to 4.x — the reason this is a major release. Models exported by Teachable
+Machine are not affected: pose, image, and audio models exported for the 1.x-era libraries load and
+run unchanged on 4.22.0.
+
+Two behavioral notes for existing projects:
+
+- With no `set compute mode to` block, recognition now negotiates a backend instead of always using
+  WebGL. `active compute backend` reports which one won, and `last error` explains any substitution.
+- The first `start camera` or `load model` downloads a larger runtime than 2.x did (1.24 MB versus
+  1.04 MB), so plan the startup sequence accordingly. See [Compute backends](#compute-backends).
+
 ## Quick start
 
 1. Train classes such as `jump`, `card`, or `clap` in Teachable Machine.
@@ -311,6 +350,57 @@ end
 `start recognition` starts the required input and loads the configured model when necessary. Pose and
 image modes use the camera; audio mode uses the microphone. A separate `start camera` or `load model`
 step is only needed when a camera project wants to control startup phases individually.
+
+## Compute backends
+
+Recognition runs on a TensorFlow.js compute backend. `set compute mode to [MODE]` chooses it and
+`active compute backend` reports the one actually in use.
+
+| Mode | What it does |
+|---|---|
+| `auto` (default) | Tries WebGPU, WebGL, WASM, and CPU in that order and keeps the first one that activates and computes a verification convolution correctly |
+| `webgpu` | Modern GPU path with the lowest per-operation overhead |
+| `webgl` | The long-standing GPU path, available in every browser this extension supports |
+| `wasm` | SIMD WebAssembly kernels; steady on machines with weak or unreliable GPU drivers |
+| `cpu` | Plain JavaScript kernels; correct everywhere and slowest |
+
+A named mode is still only a preference. If the browser cannot provide it, the same order takes
+over, `active compute backend` shows what won, and `last error` explains the substitution. That is
+why a project should read `active compute backend` rather than assume the requested mode.
+
+```text
+when green flag clicked
+set compute mode to [webgpu]
+set model URL to [https://teachablemachine.withgoogle.com/models/.../]
+start recognition
+```
+
+The reviewed browser runtime carries the WebGL and CPU kernels. The WebGPU and WebAssembly backends
+are separate bundles next to `dist/runtime.js`, fetched only when a project reaches for them, and
+the WebAssembly binaries come from `dist/wasm/` in this same package. Everything resolves against
+the one TensorFlow.js instance the runtime published, so no page ever runs two TensorFlow.js cores.
+
+TensorFlow.js binds every tensor to the backend that was active when the tensor was created, so the
+mode has to be settled before a model loads. Changing the mode therefore releases a model that was
+loaded from a URL, and the next `load model` or `start recognition` rebuilds it on the new backend.
+Changing the mode during recognition, or while a host-prepared model is active, is refused instead.
+
+Host applications reach the same negotiation through the composition API:
+
+```js
+const composition = createTMComposition({
+  runtime: tmPose,
+  compute: tmCompute, // published by dist/runtime.js
+  computeMode: 'auto',
+});
+
+const selection = await composition.selectComputeBackend('webgpu');
+// selection.backend === 'webgpu' | 'webgl' | 'wasm' | 'cpu'
+// selection.fallback === true when the requested backend was unusable
+```
+
+`selectComputeBackend()` is rejected with `TM-COMPOSITION-018` while pose models are registered,
+because their tensors live in the memory of the backend that loaded them. Release them first.
 
 ## Reading recognition results
 
@@ -398,7 +488,15 @@ Each version 2 event includes `poseName`, `previousPoseName`, `score`, `reason` 
 
 Read `last error` first when setup fails. Common causes are denied camera permission, a model editor
 URL instead of the published model folder URL, blocked network requests, or loading the extension in
-the sandbox. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/#troubleshooting)
+the sandbox. A sandboxed load shows nothing in the editor: the custom extension dialog simply keeps
+waiting, and only the browser console carries `TM must run without the extension sandbox.` Load the
+downloaded file from the dialog's **Files** tab, never from its **URL** tab.
+
+`start camera` also needs the page to have been interacted with at least once. Browsers refuse
+`video.play()` on a page with no user activation, which surfaces as `NotAllowedError: play() failed
+because the user didn't interact with the document first.` Clicking the green flag counts, so an
+ordinary project is fine; a packaged project that starts recognition on its own has to wait for a
+button press before `start camera`. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/#troubleshooting)
 or [Japanese troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/ja/#troubleshooting)
 for step-by-step checks.
 
@@ -433,6 +531,34 @@ Returns the current recognition mode.
 |---|---|
 | Type | REPORTER |
 | Opcode | `recognitionModeReporter` |
+
+### `set compute mode to [MODE]`
+
+Selects the TensorFlow.js compute backend. "auto" negotiates WebGPU, WebGL, WASM, and CPU in that order and falls back automatically when a backend is unusable. Changing the mode releases a model that was loaded from a URL so it can be reloaded on the new backend.
+
+| Property | Value |
+|---|---|
+| Type | COMMAND |
+| Opcode | `setComputeMode` |
+| `MODE` | STRING, default: `auto`, menu: `computeModeMenu` |
+
+### `compute mode`
+
+Returns the requested compute mode.
+
+| Property | Value |
+|---|---|
+| Type | REPORTER |
+| Opcode | `computeModeReporter` |
+
+### `active compute backend`
+
+Returns the TensorFlow.js backend recognition is actually running on, which can differ from the requested mode when the browser could not provide it.
+
+| Property | Value |
+|---|---|
+| Type | REPORTER |
+| Opcode | `computeBackendReporter` |
 
 ### `set model URL to [URL]`
 
@@ -879,10 +1005,14 @@ do not add a write token to the repository.
 
 ## External libraries
 
-The version-pinned `dist/runtime.js` artifact bundles TensorFlow.js 1.3.1, Teachable Machine Pose
-0.8.3, and its PoseNet 2.2.2 runtime in one reviewed module graph. The standalone extension loads
-that single artifact from jsDelivr when no runtime is injected. The fixed offline PoseNet model
-data is distributed separately as its original JSON and binary shards under `dist/posenet/`.
+The version-pinned `dist/runtime.js` artifact bundles TensorFlow.js 4.22.0, Teachable Machine Pose
+0.8.6, Teachable Machine Image 0.8.5, TensorFlow.js Speech Commands 0.5.4, and its PoseNet 2.2.2
+runtime in one reviewed module graph. The standalone extension loads that single artifact from
+jsDelivr when no runtime is injected. The optional `dist/backend-wasm.js` and
+`dist/backend-webgpu.js` bundles resolve TensorFlow.js against the instance that runtime already
+published, so a page never ends up with two TensorFlow.js cores; the WebAssembly binaries under
+`dist/wasm/` and the fixed offline PoseNet model data under `dist/posenet/` are distributed as their
+original binary files.
 
 ## License
 

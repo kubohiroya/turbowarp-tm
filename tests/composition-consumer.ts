@@ -13,18 +13,32 @@ import {
   type PreviewMirroring,
   type PreviewPosition,
   type PoseOverlayConfidenceScaling,
+  type ComputeBackendAttempt,
+  type ComputeBackendName,
+  type ComputeBackendSelection,
+  type ComputeMode,
   type TMComposition,
+  type TMComputeController,
   type TMCompositionRuntime
 } from '@kubohiroya/turbowarp-tm/composition';
 
 declare const runtime: TMCompositionRuntime;
+declare const compute: TMComputeController;
 
 const initializationPolicy: PoseModelInitializationPolicy = 'latest-needed';
+const computeMode: ComputeMode = 'auto';
 const composition: TMComposition = createTMComposition({
   runtime,
+  compute,
+  computeMode,
   modelInitializationPolicy: initializationPolicy,
   parallelModelInitialization: true
 });
+const computeSelection: Promise<ComputeBackendSelection> =
+  composition.selectComputeBackend('webgpu');
+const activeCompute: ComputeBackendSelection | null = composition.getComputeBackend();
+const activeComputeBackend: ComputeBackendName | undefined = activeCompute?.backend;
+const computeAttempts: ReadonlyArray<ComputeBackendAttempt> = activeCompute?.attempts ?? [];
 const previewMirroring: PreviewMirroring = 'unmirrored';
 composition.setPreviewMirroring(previewMirroring);
 const previewPosition: PreviewPosition = 'full-stage';
@@ -86,3 +100,6 @@ void registration;
 void cameraDevices;
 void currentCameraSelection;
 void activeCamera;
+void computeSelection;
+void activeComputeBackend;
+void computeAttempts;

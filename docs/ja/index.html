@@ -15,10 +15,10 @@
   <a class="skip-link" href="#main">本文へ移動</a>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./" aria-label="Teachable Machine 2.0.0日本語ガイドの先頭">
+      <a class="brand" href="./" aria-label="Teachable Machine 3.0.0日本語ガイドの先頭">
         <span class="brand-mark">TM</span>
         <span class="brand-label">Teachable Machine</span>
-        <span class="version-badge" aria-hidden="true">v2.0.0</span>
+        <span class="version-badge" aria-hidden="true">v3.0.0</span>
       </a>
       <nav class="primary-nav" aria-label="ガイドの章">
         <a href="#quick-start">クイックスタート</a>
@@ -94,7 +94,7 @@
         <p>
           <strong>Teachable Machine</strong>見出し直下のドキュメントボタンを押します。集約されたブロックも、
           ここで説明するモデルURL、認識、プレビュー、ラベル、スコア、しきい値、ライフサイクルの
-          動作を保ちます。TurboWarp TM 2.0.0のパッケージ系列では公開ライフサイクルopcodeを<code>startRecognition</code>、
+          動作を保ちます。TurboWarp TM 3.0.0のパッケージ系列では公開ライフサイクルopcodeを<code>startRecognition</code>、
           <code>stopRecognition</code>、<code>isRecognizing</code>へ統一し、旧名は残していません。
           設定可能なSVGポーズオーバーレイブロックはポーズモードで引き続き利用でき、画像モードではキーポイントなしでラベルスコアを扱います。
           latest-neededモデル初期化とキャンセル制御は引き続きhost向けAPIとしてComposition APIの章で説明します。
@@ -108,7 +108,7 @@
           <p class="eyebrow">クイックスタート</p>
           <h2 id="quick-start-title">モデルから動きまで、4ステップ</h2>
         </div>
-        <p>公開済みの Teachable Machine Pose、Image、Audioモデル、対応するカメラまたはマイク権限、ネットワーク接続が必要です。この拡張機能をカスタム拡張機能として読み込み、<strong>サンドボックス化せずに拡張機能を実行する</strong>を有効にしてから、次の順番でブロックを置きます。</p>
+        <p>公開済みの Teachable Machine Pose、Image、Audioモデル、対応するカメラまたはマイク権限、ネットワーク接続が必要です。ダウンロードした <code>tm.js</code> をカスタム拡張機能ダイアログの<strong>Files</strong>タブから、<strong>サンドボックス化せずに実行する</strong>を有効にして読み込み、次の順番でブロックを置きます。</p>
       </div>
 
       <div class="flow" aria-label="4ステップの準備手順">
@@ -144,7 +144,7 @@
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">!</span>
-        <p><strong>サンドボックス化せずに読み込んでください。</strong>カメラまたはマイク利用とステージ内プレビューには、TurboWarp の「サンドボックス化せずに拡張機能を実行する」が必要です。信頼できる拡張機能のコードだけを読み込んでください。</p>
+        <p><strong>「Files」タブから、サンドボックス化せずに読み込んでください。</strong>カメラまたはマイク利用とステージ内プレビューには「サンドボックス化せずに実行する」が必要ですが、この選択肢はカスタム拡張機能ダイアログの<strong>Files</strong>タブにしかありません。<strong>URL</strong>タブは必ずサンドボックス化されるため、URL を貼ると画面に何も出ないままダイアログが待機し続け、ブラウザのコンソールに <code>TM must run without the extension sandbox.</code> だけが残ります。先に <code>tm.js</code> をダウンロードしてください。信頼できる拡張機能のコードだけを読み込んでください。</p>
       </aside>
     </section>
 
@@ -299,6 +299,16 @@
           </ul>
         </article>
         <article class="reference-card">
+          <h3>計算バックエンド</h3>
+          <p>認識処理にどの計算資源を使うかを選びます。</p>
+          <ul>
+            <li><code>set compute mode to [MODE]</code>・<code>auto</code>（既定）、<code>webgpu</code>、<code>webgl</code>、<code>wasm</code>、<code>cpu</code></li>
+            <li><code>compute mode</code>はプロジェクトが要求したモードを返します。</li>
+            <li><code>active compute backend</code>はブラウザが実際に用意したバックエンドを返します。</li>
+          </ul>
+          <p><code>auto</code>はWebGPU、WebGL、WASM、CPUの順に試し、実際に計算できた最初のものを使います。モードを明示しても要求どおりにならないことがあり、その場合は同じ順序で代替が選ばれ、<code>last error</code>に理由が残ります。モデルを読み込む前にモードを設定してください。切り替えるとURLから読み込んだモデルは解放され、新しいバックエンド上で読み直されます。</p>
+        </article>
+        <article class="reference-card">
           <h3>カメラとプレビュー</h3>
           <p>映像の取得と認識を分けて制御できます。</p>
           <ul>
@@ -353,7 +363,8 @@
           <p class="eyebrow">トラブルシューティング</p>
           <h2 id="troubleshooting-title">期待した結果にならないとき</h2>
         </div>
-        <p>まず <code>last error</code> を確認してください。設定時の失敗は、権限、間違ったモデル URL、ネットワーク制限、サンドボックス内での読み込みが主な原因です。</p>
+        <p>まず <code>last error</code> を確認してください。設定時の失敗は、権限、間違ったモデル URL、ネットワーク制限、サンドボックス内での読み込みが主な原因です。サンドボックスで読み込むとエディタには何も出ず、ダイアログが待機したままで、ブラウザのコンソールに <code>TM must run without the extension sandbox.</code> だけが出ます。<strong>URL</strong>タブではなく<strong>Files</strong>タブからファイルを読み込んでください。</p>
+        <p><code>start camera</code> にはページへの操作が一度必要です。ユーザー操作のないページでは <code>video.play()</code> が拒否され、<code>NotAllowedError: play() failed because the user didn’t interact with the document first.</code> となります。緑の旗のクリックは操作として数えられるので通常のプロジェクトは問題ありませんが、自動で開始するプロジェクトはボタン押下を待つ必要があります。</p>
       </div>
 
       <div class="troubleshooting">

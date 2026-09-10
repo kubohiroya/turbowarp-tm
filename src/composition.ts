@@ -1,4 +1,13 @@
-import {TMExtension, type AccumulatedPoseChangedEventV2} from './extension.js';
+import {
+  requireComputeMode,
+  type ComputeBackendSelection,
+  type ComputeMode
+} from './compute-backend.js';
+import {
+  TMExtension,
+  type AccumulatedPoseChangedEventV2,
+  type TMComputeController
+} from './extension.js';
 import {
   isPoseKeypointName,
   type PoseBoneStyle,
@@ -7,7 +16,13 @@ import {
   type PoseOverlayConfidenceScaling
 } from './pose-overlay.js';
 
-export type {AccumulatedPoseChangedEventV2} from './extension.js';
+export type {AccumulatedPoseChangedEventV2, TMComputeController} from './extension.js';
+export type {
+  ComputeBackendAttempt,
+  ComputeBackendName,
+  ComputeBackendSelection,
+  ComputeMode
+} from './compute-backend.js';
 export type {
   PoseBoneStyle,
   PoseJointStyle,
@@ -115,6 +130,8 @@ export interface TMComposition {
   accumulatedScore(): number;
   accumulatedScoreOf(name: unknown): number;
   subscribeAccumulatedPose(listener: AccumulatedPoseListener): () => void;
+  selectComputeBackend(mode?: unknown): Promise<ComputeBackendSelection>;
+  getComputeBackend(): ComputeBackendSelection | null;
 }
 
 export interface TMCompositionOptions {
@@ -122,6 +139,13 @@ export interface TMCompositionOptions {
   createFile?: (bytes: Uint8Array, name: string, mimeType: string) => File;
   modelInitializationPolicy?: PoseModelInitializationPolicy;
   parallelModelInitialization?: boolean;
+  /**
+   * The compute-backend controller published by the reviewed browser runtime as
+   * `globalThis.tmCompute`. Without it the composition keeps whatever backend
+   * TensorFlow.js selected for itself.
+   */
+  compute?: TMComputeController;
+  computeMode?: ComputeMode;
 }
 
 type LoadedPoseModel = {
@@ -242,6 +266,26 @@ function validateRuntime(value: unknown): TMCompositionRuntime {
     throw new TypeError('TM composition runtime must provide loadFromFiles and Webcam.');
   }
   return value as unknown as TMCompositionRuntime;
+}
+
+function validateComputeController(value: unknown): TMComputeController | null {
+  if (value === undefined) return null;
+  if (
+    !isRecord(value) ||
+    typeof value.select !== 'function' ||
+    typeof value.getSelection !== 'function' ||
+    typeof value.getBackend !== 'function'
+  ) {
+    throw new TypeError(
+      'TM composition compute controller must provide select, getSelection, and getBackend.'
+    );
+  }
+  return value as unknown as TMComputeController;
+}
+
+function validateComputeMode(value: unknown): ComputeMode {
+  if (value === undefined) return 'auto';
+  return requireComputeMode(value);
 }
 
 function validateModelInitializationPolicy(value: unknown): PoseModelInitializationPolicy {
@@ -592,11 +636,16 @@ export function createTMComposition(options: TMCompositionOptions): TMCompositio
   const parallelModelInitialization = validateParallelModelInitialization(
     options.parallelModelInitialization
   );
+  const compute = validateComputeController(options.compute);
+  let computeMode = validateComputeMode(options.computeMode);
+  let computeSelection: ComputeBackendSelection | null = null;
   const accumulatedPoseListeners = new Set<AccumulatedPoseListener>();
   const extension = new TMExtension(
     {temporalPoseScoring: true, accumulatedPoseEvents: true, poseOverlay: true},
     {
       runtime,
+      ...(compute ? {compute} : {}),
+      computeMode,
       allowRemoteLibraries: false,
       onAccumulatedPoseChanged(event) {
         const immutableEvent = Object.freeze({...event});
@@ -788,10 +837,24 @@ export function createTMComposition(options: TMCompositionOptions): TMCompositio
     }
   }
 
+  // The extension owns the requested mode so the composition and the block
+  // surface can never negotiate against two different targets.
+  async function ensureComputeBackend(): Promise<void> {
+    if (!compute) return;
+    computeSelection = await extension.ensureComputeBackend();
+  }
+
   async function executeRegistrationRequest(
     request: RegistrationRequest
   ): Promise<PoseModelRegistration> {
     if (requestWasCancelled(request)) throw abortError(request.name);
+    // TensorFlow.js binds tensors to the active backend, so the backend has to
+    // be settled before the first model allocates anything. Compositions
+    // without a compute controller keep their original scheduling.
+    if (compute) {
+      await ensureComputeBackend();
+      if (requestWasCancelled(request)) throw abortError(request.name);
+    }
     let loaded: unknown;
     try {
       loaded = await runtime.loadFromFiles(
@@ -1284,6 +1347,39 @@ export function createTMComposition(options: TMCompositionOptions): TMCompositio
 
     accumulatedScoreOf(name) {
       return Number(extension.accumulatedPoseScoreReporter({NAME: requireName(name)}));
+    },
+
+    async selectComputeBackend(mode) {
+      ensureActive();
+      if (!compute) {
+        throw compositionError(
+          'TM-COMPOSITION-017',
+          'TM composition was created without a compute controller.'
+        );
+      }
+      const requested = validateComputeMode(mode);
+      if (requested !== computeMode && (models.size > 0 || registrationRequests.size > 0)) {
+        // Registered models hold tensors in the memory of the backend that
+        // loaded them, so they cannot survive a backend switch.
+        throw compositionError(
+          'TM-COMPOSITION-018',
+          'Release every registered pose model before changing the compute backend.'
+        );
+      }
+      computeMode = requested;
+      await extension.setComputeMode({MODE: requested});
+      computeSelection = await extension.ensureComputeBackend();
+      if (!computeSelection) {
+        throw compositionError(
+          'TM-COMPOSITION-019',
+          'TM compute controller did not report a backend selection.'
+        );
+      }
+      return computeSelection;
+    },
+
+    getComputeBackend() {
+      return computeSelection;
     },
 
     subscribeAccumulatedPose(listener) {
