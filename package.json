@@ -1,6 +1,6 @@
 {
   "name": "@kubohiroya/turbowarp-tm",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
   "author": "Hiroya Kubo <hiroya@cuc.ac.jp>",
   "license": "MPL-2.0",
@@ -43,6 +43,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
@@ -50,26 +53,26 @@
     "build:extension": "vite build",
     "build:composition": "vite build --config vite.composition.config.ts",
     "build:runtime": "vite build --config vite.runtime.config.ts",
-    "build:backends": "vite build --config vite.backend-wasm.config.ts && vite build --config vite.backend-webgpu.config.ts && node scripts/copy-wasm-assets.mjs",
-    "build:posenet": "vite build --config vite.posenet.config.ts && node scripts/copy-posenet-assets.mjs",
-    "build:notices": "node scripts/copy-third-party-notices.mjs",
+    "build:backends": "vite build --config vite.backend-wasm.config.ts && vite build --config vite.backend-webgpu.config.ts && node scripts/copy-wasm-assets.ts",
+    "build:posenet": "vite build --config vite.posenet.config.ts && node scripts/copy-posenet-assets.ts",
+    "build:notices": "node scripts/copy-third-party-notices.ts",
     "build:types": "tsc --project tsconfig.build.json",
     "types:composition:check": "tsc --project tsconfig.composition-consumer.json",
     "types:posenet:check": "tsc --project tsconfig.posenet-consumer.json",
     "test": "vitest run",
-    "docs": "node scripts/generate-readme.mjs",
+    "docs": "node scripts/generate-readme.ts",
     "docs:check": "npm run docs && git diff --exit-code -- README.md",
-    "docs:pages:check": "node scripts/check-pages.mjs",
-    "release:consistency:check": "node scripts/check-release-consistency.mjs",
+    "docs:pages:check": "node scripts/check-pages.ts",
+    "release:consistency:check": "node scripts/check-release-consistency.ts",
     "check:dist": "npm run build && git diff --exit-code -- dist",
-    "archive:check": "node scripts/check-github-archive.mjs",
+    "archive:check": "node scripts/check-github-archive.ts",
     "pack:check": "npm pack --dry-run --ignore-scripts",
     "release:check": "npm publish --dry-run --access public --tag latest",
     "check": "npm run typecheck && npm run test && npm run build && npm run types:composition:check && npm run types:posenet:check && npm run docs:check && npm run docs:pages:check && npm run release:consistency:check && npm run check:dist && npm run archive:check && npm run pack:check",
     "prepack": "npm run build && npm run release:consistency:check"
   },
   "devDependencies": {
-    "@kubohiroya/vite-plugin-turbowarp-extension": "0.1.0",
+    "@kubohiroya/vite-plugin-turbowarp-extension": "0.4.0",
     "@teachablemachine/image": "0.8.5",
     "@teachablemachine/pose": "0.8.6",
     "@tensorflow-models/posenet": "2.2.2",
@@ -77,8 +80,9 @@
     "@tensorflow/tfjs": "4.22.0",
     "@tensorflow/tfjs-backend-wasm": "4.22.0",
     "@tensorflow/tfjs-backend-webgpu": "4.22.0",
+    "@types/node": "^22.20.1",
     "typescript": "^5.9.3",
-    "vite": "^7.0.0",
+    "vite": "^8.2.2",
     "vitest": "^4.0.14"
   },
   "keywords": [

@@ -1,6 +1,27 @@
 import {copyFile, readFile, writeFile} from 'node:fs/promises';
 
-const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
+interface PackageMetadata {
+  name: string;
+  version: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  homepage?: string;
+  packageManager?: string;
+  engines?: {node?: string};
+  repository?: {url?: string};
+  bugs?: {url?: string};
+  files?: string[];
+  bin?: string | Record<string, string>;
+  main?: string;
+  types?: string;
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+const packageMetadata = JSON.parse(await readFile('package.json', 'utf8')) as PackageMetadata;
 const dependencies = packageMetadata.devDependencies;
 const noticeUrl =
   `https://github.com/kubohiroya/turbowarp-tm/blob/v${packageMetadata.version}/` +

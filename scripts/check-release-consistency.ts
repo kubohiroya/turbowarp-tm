@@ -2,12 +2,33 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import process from 'node:process';
 
-const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
+interface PackageMetadata {
+  name: string;
+  version: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  homepage?: string;
+  packageManager?: string;
+  engines?: {node?: string};
+  repository?: {url?: string};
+  bugs?: {url?: string};
+  files?: string[];
+  bin?: string | Record<string, string>;
+  main?: string;
+  types?: string;
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+const packageMetadata = JSON.parse(await readFile('package.json', 'utf8')) as PackageMetadata;
 const dependencies = packageMetadata.devDependencies;
 const version = packageMetadata.version;
 const pinnedPackage = `${packageMetadata.name}@${version}`;
 const docsBrandName = 'Teachable Machine';
-const errors = [];
+const errors: string[] = [];
 
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
   errors.push(`package.json contains an invalid version: ${version}`);
@@ -33,16 +54,21 @@ for (const path of ['docs/index.html', 'docs/ja/index.html']) {
 
 for (const path of ['dist/tm.js', 'dist/composition.js']) {
   const source = await readFile(path, 'utf8');
-  if (!source.includes(`version = "${version}"`)) {
+  // Rollup emitted `const version = "x"`, Rolldown inlines it as `version: "x"`.
+  // Assert the value is embedded, not one bundler's spelling of it.
+  if (!new RegExp(`version\\s*[:=]\\s*"${version.replace(/\./g, '\\.')}"`).test(source)) {
     errors.push(`${path} must embed package version ${version}`);
   }
-  if (!source.includes('packageMetadata.version}-typescript')) {
+  // The local binding for package.json differs per bundler; the derivation does not.
+  if (!source.includes('.version}-typescript')) {
     errors.push(`${path} must derive the runtime version from package metadata`);
   }
 }
 
 const browserRuntime = await readFile('dist/runtime.js', 'utf8');
-if (!browserRuntime.includes(`version:"${version}"`)) {
+// dist/runtime.js is minified, so the property name is mangled; assert the
+// version literal itself rather than a bundler-specific identifier.
+if (!browserRuntime.includes(`"${version}"`)) {
   errors.push(`dist/runtime.js must embed package version ${version}`);
 }
 if (
@@ -142,8 +168,8 @@ for (const path of ['.github/workflows/ci.yml', '.github/workflows/release.yml']
 
 const poseNetModule = await readFile('dist/posenet.js', 'utf8');
 if (
-  !poseNetModule.includes(`version = "${version}"`) ||
-  !poseNetModule.includes('version: packageMetadata.version')
+  !new RegExp(`version\\s*[:=]\\s*"${version.replace(/\./g, '\\.')}"`).test(poseNetModule) ||
+  !/version: [A-Za-z_$][\w$]*(?:_default)?\.version/.test(poseNetModule)
 ) {
   errors.push(`dist/posenet.js must embed package version ${version}`);
 }
