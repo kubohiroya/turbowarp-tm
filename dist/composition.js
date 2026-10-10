@@ -549,7 +549,7 @@ function confidenceMultiplier(value) {
 }
 var package_default = {
 	name: "@kubohiroya/turbowarp-teachable-machine",
-	version: "3.2.1",
+	version: "3.3.0",
 	description: "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
 	author: "Hiroya Kubo <hiroya@cuc.ac.jp>",
 	license: "MPL-2.0",
