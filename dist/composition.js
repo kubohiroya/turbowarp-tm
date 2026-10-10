@@ -617,6 +617,7 @@ var package_default = {
 		"prepack": "npm run build && npm run release:consistency:check"
 	},
 	devDependencies: {
+		"@kubohiroya/turbowarp-camera-source": "0.13.0",
 		"@kubohiroya/vite-plugin-turbowarp-extension": "0.4.0",
 		"@teachablemachine/image": "0.8.5",
 		"@teachablemachine/pose": "0.8.6",
@@ -643,6 +644,23 @@ var package_default = {
 };
 //#endregion
 //#region src/extension.ts
+/**
+* Where Camera Source puts itself on the VM runtime.
+*
+* Declared here rather than imported as a value, because this file is bundled into a single-file
+* extension and no dependency's code has ever been inlined into it. The key and the member read
+* below are pinned against Camera Source's own published constant and narrowing function in the
+* tests, which import both and are not shipped, so a rename upstream fails here rather than
+* silently reading an absent extension as "not loaded".
+*/
+var CAMERA_SOURCE_RUNTIME_KEY = "ext_kubohiroyacamerasource";
+function readCameraSource(runtime) {
+	if (typeof runtime !== "object" || runtime === null) return void 0;
+	const candidate = runtime[CAMERA_SOURCE_RUNTIME_KEY];
+	if (typeof candidate !== "object" || candidate === null) return void 0;
+	const { acquireCamera } = candidate;
+	return typeof acquireCamera === "function" ? candidate : void 0;
+}
 var EXTENSION_ID = "kubohiroyatm";
 var VERSION = `${package_default.version}-typescript`;
 var DOCS_URI = "https://kubohiroya.github.io/turbowarp-teachable-machine/";
@@ -925,6 +943,7 @@ var TMExtension = class {
 		this.modelURL = "";
 		this.model = null;
 		this.webcam = null;
+		this.cameraLease = null;
 		this.cameraRunning = false;
 		this.cameraSelection = "default";
 		this.cameraSelectionIsDeviceId = false;
@@ -1146,8 +1165,11 @@ var TMExtension = class {
 		await this.ensureComputeBackend();
 	}
 	cleanupCameraResources() {
+		const lease = this.cameraLease;
+		this.cameraLease = null;
 		const video = this.webcam?.webcam;
-		if (video?.srcObject) {
+		if (lease) lease.release();
+		else if (video?.srcObject) {
 			video.srcObject.getTracks().forEach((track) => track.stop());
 			video.srcObject = null;
 		}
@@ -1180,11 +1202,16 @@ var TMExtension = class {
 			if (!runtime) throw new Error("Teachable Machine: Runtime is unavailable.");
 			if (!("Webcam" in runtime)) throw new Error("Teachable Machine: Camera runtime is unavailable in the current mode.");
 			this.webcam = new runtime.Webcam(320, 240, true);
-			const constraints = cameraConstraints(this.resolvedCameraSelection());
+			const lease = await this.acquireSharedCamera();
+			if (lease) {
+				this.cameraLease = lease;
+				this.webcam.webcam = lease.getFrameSource().element;
+			}
+			const constraints = lease ? void 0 : cameraConstraints(this.resolvedCameraSelection());
 			if (constraints) await this.webcam.setup(constraints);
 			else await this.webcam.setup();
 			initializeCameraReadbackContext(this.webcam.canvas);
-			await this.webcam.play();
+			if (!lease) await this.webcam.play();
 			this.attachPreviewToStage();
 			this.cameraRunning = true;
 			try {
@@ -1198,6 +1225,29 @@ var TMExtension = class {
 			this.setLastError(error);
 			throw error;
 		}
+	}
+	/**
+	* A lease on the shared camera, or null when Camera Source is not loaded.
+	*
+	* Camera Source owns the device and decides when a stream stops, which is what lets one camera
+	* serve pose recognition and anything else reading frames at the same time. It is a separate
+	* TurboWarp extension, and this one is also distributed for standalone URL loading, so its
+	* absence is ordinary rather than a failure: the self-acquired path stays for it.
+	*
+	* One camera id for every visual recognition mode. Opening a second device for a work that
+	* recognises both poses and images is not what sharing is for, and `pose` is the role name
+	* Camera Source's own documentation uses for this consumer.
+	*/
+	async acquireSharedCamera() {
+		const cameraSource = readCameraSource(Scratch.vm?.runtime);
+		if (!cameraSource) return null;
+		const selection = this.resolvedCameraSelection();
+		const options = {
+			owner: package_default.name,
+			cameraId: "pose"
+		};
+		if (selection.kind === "device") options.deviceId = selection.value;
+		return cameraSource.acquireCamera(options);
 	}
 	stopCamera() {
 		try {

@@ -330,6 +330,7 @@
             <li><code>set pose [PROPERTY] confidence scaling [STATE]</code></li>
           </ul>
           <p>Camera labels may appear only after permission is granted. Device IDs are browser- and machine-specific. Switching a running camera preserves the model, recognition state, and preview settings; a failed switch attempts to restore the previous camera.</p>
+          <p>When <a href="https://github.com/kubohiroya/turbowarp-camera-source">TurboWarp-Camera-Source</a> is loaded, this extension leases the camera it shares under the <code>pose</code> role, so one device serves recognition and anything else reading frames. <code>stop camera</code> then releases the lease without stopping tracks other consumers are reading. Camera Source is optional: without it the extension opens and stops its own camera as before, and nothing in a project changes.</p>
         </article>
         <article class="reference-card">
           <h3>Recognition and results</h3>

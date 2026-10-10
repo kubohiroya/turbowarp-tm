@@ -328,6 +328,7 @@
             <li><code>set pose overlay minimum confidence to [CONFIDENCE]</code></li>
             <li><code>set pose [PROPERTY] confidence scaling [STATE]</code></li>
           </ul>
+          <p><a href="https://github.com/kubohiroya/turbowarp-camera-source">TurboWarp-Camera-Source</a> が読み込まれている場合、この拡張機能はそれが <code>pose</code> の役割で共有しているカメラのリースを取ります。1台のカメラが認識と、フレームを読む他の用途を同時に支えられます。<code>stop camera</code> はリースを解放するだけで、他の利用者が読んでいるトラックは止めません。Camera Source は任意です。無い場合は従来どおり自分でカメラを開いて止め、プロジェクト側に変更は要りません。</p>
           <p>カメラ名は利用許可後に初めて表示される場合があります。device ID はブラウザーと端末に固有です。動作中の切り替えでもモデル、認識状態、プレビュー設定を維持し、失敗時は以前のカメラへの復旧を試みます。</p>
         </article>
         <article class="reference-card">

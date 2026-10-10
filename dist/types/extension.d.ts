@@ -152,6 +152,19 @@ export declare class TMExtension {
     ensureLibrariesLoaded(): Promise<void>;
     cleanupCameraResources(): void;
     startCamera(): Promise<void>;
+    /**
+     * A lease on the shared camera, or null when Camera Source is not loaded.
+     *
+     * Camera Source owns the device and decides when a stream stops, which is what lets one camera
+     * serve pose recognition and anything else reading frames at the same time. It is a separate
+     * TurboWarp extension, and this one is also distributed for standalone URL loading, so its
+     * absence is ordinary rather than a failure: the self-acquired path stays for it.
+     *
+     * One camera id for every visual recognition mode. Opening a second device for a work that
+     * recognises both poses and images is not what sharing is for, and `pose` is the role name
+     * Camera Source's own documentation uses for this consumer.
+     */
+    private acquireSharedCamera;
     stopCamera(): void;
     isCameraRunning(): any;
     getCameraMenuItems(): {

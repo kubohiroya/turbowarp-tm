@@ -441,7 +441,22 @@ setting does not change the frames used for recognition. The `camera preview mir
 returns the current setting.
 
 - `stop recognition` clears current results, stops audio listening, but leaves the camera available;
-- `stop camera` also stops recognition, releases the camera tracks, and removes the preview and SVG.
+- `stop camera` also stops recognition, releases the camera, and removes the preview and SVG.
+
+### Sharing one camera with other extensions
+
+When [TurboWarp-Camera-Source](https://github.com/kubohiroya/turbowarp-camera-source) is loaded, this
+extension takes a lease on the camera it shares under the `pose` role instead of opening a device of
+its own. One physical camera then serves recognition and anything else reading frames — a QR reader,
+a preview, another classifier — rather than each extension competing for the device.
+
+Camera Source owns the stream: it stops the camera when the last lease is released, and `stop
+camera` here releases this extension's lease without stopping tracks that other consumers may still
+be reading. The frames recognition sees are unchanged either way.
+
+Camera Source is not required. It is a separate extension, and this one is also loaded directly by
+URL, so when it is absent the extension opens and stops its own camera exactly as before. Nothing
+in a project needs to change for either configuration.
 
 The extension performs pose, image, or audio classification in the browser and does not upload
 camera frames or microphone audio. It does fetch its runtime libraries and the published model. Stop
