@@ -1,5 +1,9 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
+  cameraSourceRuntimeKey,
+  readCameraSourceRuntime
+} from '@kubohiroya/turbowarp-camera-source/runtime';
+import {
   BLOCK_ICON_URI,
   BROWSER_RUNTIME_URL,
   DOCS_URI,
@@ -866,6 +870,128 @@ describe('TMExtension', () => {
     expect(canvas.getContext).toHaveBeenCalledWith('2d');
     expect(extension.cameraDeviceIdReporter()).toBe('front-id');
     expect(extension.cameraDeviceNameReporter()).toBe('Built-in Front Camera');
+  });
+
+  it('leases the shared camera from Camera Source instead of opening one', async () => {
+    const stage = createElement();
+    const canvas = createElement('CANVAS');
+    const videoTrack = {
+      kind: 'video',
+      label: 'Shared Camera',
+      getSettings: () => ({deviceId: 'shared-id'}),
+      stop: vi.fn()
+    };
+    const sharedVideo = {srcObject: {getVideoTracks: () => [videoTrack], getTracks: () => [videoTrack]}};
+    const setup = vi.fn(async () => undefined);
+    const play = vi.fn(async () => undefined);
+    const webcam = {canvas, webcam: null, setup, play, update: vi.fn()};
+    function Webcam() {
+      return webcam;
+    }
+    const release = vi.fn(async () => undefined);
+    const acquireCamera = vi.fn(async () => ({
+      getFrameSource: () => ({kind: 'video', element: sharedVideo, width: 640, height: 480}),
+      release
+    }));
+    const cameraSourceRuntime = {[cameraSourceRuntimeKey]: {acquireCamera}};
+    // Upstream's own narrowing has to accept this fake, so a renamed key or member fails here
+    // instead of reading as "Camera Source is not loaded".
+    expect(readCameraSourceRuntime(cameraSourceRuntime)).toBeDefined();
+    (Scratch as any).vm = {runtime: cameraSourceRuntime};
+    enumerateDevices.mockResolvedValue([
+      {kind: 'videoinput', deviceId: 'shared-id', label: 'Shared Camera'}
+    ]);
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
+    vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
+
+    await extension.startCamera();
+
+    expect(acquireCamera).toHaveBeenCalledWith({owner: expect.any(String), cameraId: 'pose'});
+    // The leased element is injected before setup, which is what makes setup build only the canvas
+    // and never reach getUserMedia. Camera Source already played it.
+    expect(webcam.webcam).toBe(sharedVideo);
+    expect(setup).toHaveBeenCalledWith();
+    expect(play).not.toHaveBeenCalled();
+    // The canvas still carries the frames, so the 320x240 mirrored crop every reader expects and
+    // the device reporters are unchanged.
+    expect(canvas.getContext).toHaveBeenCalledWith('2d');
+    expect(extension.cameraDeviceIdReporter()).toBe('shared-id');
+
+    extension.stopCamera();
+
+    // Camera Source stops the stream when the last lease goes. Stopping it here would take the
+    // frames from every other consumer sharing the camera.
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(videoTrack.stop).not.toHaveBeenCalled();
+    expect(sharedVideo.srcObject).not.toBeNull();
+  });
+
+  it('asks the lease for the selected device', async () => {
+    const stage = createElement();
+    const sharedVideo = {srcObject: {getVideoTracks: () => [], getTracks: () => []}};
+    const webcam = {
+      canvas: createElement('CANVAS'),
+      webcam: null,
+      setup: vi.fn(async () => undefined),
+      play: vi.fn(async () => undefined),
+      update: vi.fn()
+    };
+    function Webcam() {
+      return webcam;
+    }
+    const acquireCamera = vi.fn(async () => ({
+      getFrameSource: () => ({kind: 'video', element: sharedVideo, width: 640, height: 480}),
+      release: vi.fn(async () => undefined)
+    }));
+    const cameraSourceRuntime = {[cameraSourceRuntimeKey]: {acquireCamera}};
+    // Upstream's own narrowing has to accept this fake, so a renamed key or member fails here
+    // instead of reading as "Camera Source is not loaded".
+    expect(readCameraSourceRuntime(cameraSourceRuntime)).toBeDefined();
+    (Scratch as any).vm = {runtime: cameraSourceRuntime};
+    enumerateDevices.mockResolvedValue([
+      {kind: 'videoinput', deviceId: 'external-id', label: 'External Camera'}
+    ]);
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
+    vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
+
+    await extension.setCameraDeviceId('external-id');
+    await extension.startCamera();
+
+    expect(acquireCamera).toHaveBeenCalledWith({
+      owner: expect.any(String),
+      cameraId: 'pose',
+      deviceId: 'external-id'
+    });
+  });
+
+  it('opens its own camera when Camera Source is not loaded', async () => {
+    const stage = createElement();
+    const videoTrack = {kind: 'video', label: 'Own Camera', getSettings: () => ({deviceId: 'own-id'}), stop: vi.fn()};
+    const play = vi.fn(async () => undefined);
+    const webcam = {
+      canvas: createElement('CANVAS'),
+      webcam: {srcObject: {getVideoTracks: () => [videoTrack], getTracks: () => [videoTrack]}},
+      setup: vi.fn(async () => undefined),
+      play,
+      update: vi.fn()
+    };
+    function Webcam() {
+      return webcam;
+    }
+    // No ext_kubohiroyacamerasource on the runtime. The extension is distributed for standalone
+    // URL loading, so this is an ordinary configuration and not a failure.
+    (Scratch as any).vm = {runtime: {}};
+    enumerateDevices.mockResolvedValue([
+      {kind: 'videoinput', deviceId: 'own-id', label: 'Own Camera'}
+    ]);
+    const extension = new TMExtension({}, {runtime: {Webcam} as never});
+    vi.spyOn(extension, 'findStageElement').mockReturnValue(stage);
+
+    await extension.startCamera();
+    expect(play).toHaveBeenCalledTimes(1);
+
+    extension.stopCamera();
+    expect(videoTrack.stop).toHaveBeenCalledTimes(1);
   });
 
   it('switches a running camera by device ID without stopping recognition state', async () => {

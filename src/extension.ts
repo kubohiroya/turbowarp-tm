@@ -18,7 +18,31 @@ import {
   type PoseOverlayConfidenceProperty,
   type PoseOverlayKeypoint
 } from './pose-overlay.js';
+import type {
+  CameraAcquireOptions,
+  CameraLease,
+  CameraSourceRuntime
+} from '@kubohiroya/turbowarp-camera-source/runtime';
 import packageMetadata from '../package.json' with {type: 'json'};
+
+/**
+ * Where Camera Source puts itself on the VM runtime.
+ *
+ * Declared here rather than imported as a value, because this file is bundled into a single-file
+ * extension and no dependency's code has ever been inlined into it. The key and the member read
+ * below are pinned against Camera Source's own published constant and narrowing function in the
+ * tests, which import both and are not shipped, so a rename upstream fails here rather than
+ * silently reading an absent extension as "not loaded".
+ */
+const CAMERA_SOURCE_RUNTIME_KEY = 'ext_kubohiroyacamerasource';
+
+function readCameraSource(runtime: unknown): CameraSourceRuntime | undefined {
+  if (typeof runtime !== 'object' || runtime === null) return undefined;
+  const candidate = (runtime as Record<string, unknown>)[CAMERA_SOURCE_RUNTIME_KEY];
+  if (typeof candidate !== 'object' || candidate === null) return undefined;
+  const {acquireCamera} = candidate as {acquireCamera?: unknown};
+  return typeof acquireCamera === 'function' ? (candidate as CameraSourceRuntime) : undefined;
+}
 
 export const EXTENSION_ID = 'kubohiroyatm';
 export const VERSION = `${packageMetadata.version}-typescript`;
@@ -351,6 +375,7 @@ export class TMExtension {
     this.modelURL = '';
     this.model = null;
     this.webcam = null;
+    this.cameraLease = null;
     this.cameraRunning = false;
     this.cameraSelection = 'default';
     this.cameraSelectionIsDeviceId = false;
@@ -621,8 +646,19 @@ export class TMExtension {
   }
 
   cleanupCameraResources() {
+    const lease = this.cameraLease;
+    this.cameraLease = null;
     const video = this.webcam?.webcam;
-    if (video?.srcObject) {
+    if (lease) {
+      // The lease owns the stream, and Camera Source stops it when the last lease goes. Nothing
+      // here touches the element either: it is shared, so detaching its stream would take the
+      // frames from every other consumer of the same camera.
+      //
+      // Released without awaiting because this runs from synchronous teardown. Camera Source
+      // forgets the lease before anything asynchronous, so a later acquisition already sees it
+      // gone.
+      void lease.release();
+    } else if (video?.srcObject) {
       video.srcObject.getTracks().forEach((track) => track.stop());
       video.srcObject = null;
     }
@@ -660,11 +696,20 @@ export class TMExtension {
         throw new Error('Teachable Machine: Camera runtime is unavailable in the current mode.');
       }
       this.webcam = new runtime.Webcam(320, 240, true);
-      const constraints = cameraConstraints(this.resolvedCameraSelection());
+      const lease = await this.acquireSharedCamera();
+      if (lease) {
+        this.cameraLease = lease;
+        // `Webcam.setup()` returns early when the video element is already in place, so this keeps
+        // the canvas it builds -- and with it the 320x240 mirrored centre crop every downstream
+        // reader expects -- while never reaching `getUserMedia`. Camera Source has already played
+        // the element, so there is nothing to play.
+        this.webcam.webcam = lease.getFrameSource().element;
+      }
+      const constraints = lease ? undefined : cameraConstraints(this.resolvedCameraSelection());
       if (constraints) await this.webcam.setup(constraints);
       else await this.webcam.setup();
       initializeCameraReadbackContext(this.webcam.canvas);
-      await this.webcam.play();
+      if (!lease) await this.webcam.play();
       this.attachPreviewToStage();
       this.cameraRunning = true;
       try {
@@ -680,6 +725,27 @@ export class TMExtension {
       this.setLastError(error);
       throw error;
     }
+  }
+
+  /**
+   * A lease on the shared camera, or null when Camera Source is not loaded.
+   *
+   * Camera Source owns the device and decides when a stream stops, which is what lets one camera
+   * serve pose recognition and anything else reading frames at the same time. It is a separate
+   * TurboWarp extension, and this one is also distributed for standalone URL loading, so its
+   * absence is ordinary rather than a failure: the self-acquired path stays for it.
+   *
+   * One camera id for every visual recognition mode. Opening a second device for a work that
+   * recognises both poses and images is not what sharing is for, and `pose` is the role name
+   * Camera Source's own documentation uses for this consumer.
+   */
+  private async acquireSharedCamera(): Promise<CameraLease | null> {
+    const cameraSource = readCameraSource(Scratch.vm?.runtime);
+    if (!cameraSource) return null;
+    const selection = this.resolvedCameraSelection();
+    const options: CameraAcquireOptions = {owner: packageMetadata.name, cameraId: 'pose'};
+    if (selection.kind === 'device') options.deviceId = selection.value;
+    return cameraSource.acquireCamera(options);
   }
 
   stopCamera() {
