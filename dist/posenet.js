@@ -1,4 +1,4 @@
-const name = "@kubohiroya/turbowarp-tm";
+const name = "@kubohiroya/turbowarp-teachable-machine";
 const version = "3.1.0";
 const packageMetadata = {
   name,

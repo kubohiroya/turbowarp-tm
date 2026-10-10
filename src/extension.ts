@@ -22,7 +22,7 @@ import packageMetadata from '../package.json' with {type: 'json'};
 
 export const EXTENSION_ID = 'kubohiroyatm';
 export const VERSION = `${packageMetadata.version}-typescript`;
-export const DOCS_URI = 'https://kubohiroya.github.io/turbowarp-tm/';
+export const DOCS_URI = 'https://kubohiroya.github.io/turbowarp-teachable-machine/';
 export const ACCUMULATED_POSE_CHANGED_EVENT = 'TM_ACCUMULATED_POSE_CHANGED';
 export const BLOCK_ICON_URI = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8h13M43 8h13v13M8 43v13h13M43 56h13V43M32 25v15M20 31l12 5 12-5M32 40 23 52M32 40l9 12"/><circle cx="32" cy="18" r="5"/></g></svg>'

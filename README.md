@@ -1,15 +1,19 @@
-# TurboWarp TM
+# TurboWarp Teachable Machine
 
 Use a [Teachable Machine](https://teachablemachine.withgoogle.com/) pose, image, or audio model as
 an input for TurboWarp projects. The extension turns each camera frame or microphone window into labels,
 confidence scores, and Boolean conditions that Scratch-style scripts can use.
 
-TurboWarp TM uses the Scratch extension ID `kubohiroyatm` from the 2.x release line onward to
+TurboWarp Teachable Machine uses the Scratch extension ID `kubohiroyatm` from the 2.x release line onward to
 avoid short-ID collisions while the package, repository, Pages URL, and browser build use
-`turbowarp-tm`.
+`turbowarp-teachable-machine`.
 
-**[Open the illustrated user guide (English)](https://kubohiroya.github.io/turbowarp-tm/)** ·
-**[日本語ガイド](https://kubohiroya.github.io/turbowarp-tm/ja/)** ·
+> The package, repository, and Pages URL were previously named `turbowarp-tm`
+> (`@kubohiroya/turbowarp-tm`, last published as 3.2.0). Replace that name with
+> `turbowarp-teachable-machine` in CDN URLs, `pnpm add`, and `import` specifiers.
+
+**[Open the illustrated user guide (English)](https://kubohiroya.github.io/turbowarp-teachable-machine/)** ·
+**[日本語ガイド](https://kubohiroya.github.io/turbowarp-teachable-machine/ja/)** ·
 [Block reference](#blocks)
 
 ## What The Extension Does
@@ -32,9 +36,9 @@ flowchart LR
 - optionally smooths decisions with time-decayed accumulated scores;
 - reports startup timings and explicit runtime errors.
 
-The [illustrated guide](https://kubohiroya.github.io/turbowarp-tm/) explains the complete flow,
+The [illustrated guide](https://kubohiroya.github.io/turbowarp-teachable-machine/) explains the complete flow,
 preview layout, score behavior, privacy, and troubleshooting. English is the default; the
-[Japanese version](https://kubohiroya.github.io/turbowarp-tm/ja/) has the same content.
+[Japanese version](https://kubohiroya.github.io/turbowarp-teachable-machine/ja/) has the same content.
 
 ## Requirements
 
@@ -65,7 +69,7 @@ That download, and the artifact a composite runtime fetches, is the version-pinn
 jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/tm.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-teachable-machine@3.1.0/dist/tm.js
 ```
 
 The standalone extension loads one reviewed browser runtime that contains one TensorFlow.js 4.22.0
@@ -77,18 +81,18 @@ Composite runtimes can load or embed the same artifact without rewriting a minif
 bundle:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-tm@3.1.0/dist/runtime.js
+https://cdn.jsdelivr.net/npm/@kubohiroya/turbowarp-teachable-machine@3.1.0/dist/runtime.js
 ```
 
 To add the published package to another project:
 
 ```sh
-pnpm add --save-exact @kubohiroya/turbowarp-tm@3.1.0
+pnpm add --save-exact @kubohiroya/turbowarp-teachable-machine@3.1.0
 ```
 
 ### Offline PoseNet bundle API
 
-`@kubohiroya/turbowarp-tm/posenet` owns the fixed PoseNet MobileNetV1 0.75 / stride 16
+`@kubohiroya/turbowarp-teachable-machine/posenet` owns the fixed PoseNet MobileNetV1 0.75 / stride 16
 manifest, package asset specifiers, SHA-256 verification, bounded Base64 project descriptor, and
 the Teachable Machine Pose fetch adapter. Host applications only decide where that explicit model
 descriptor is stored. The model stays as one JSON file and two binary shards; it is never disguised
@@ -99,7 +103,7 @@ import {readFile} from 'node:fs/promises';
 import {
   createBundledTMRuntime,
   createPoseNetProjectBundleFromLoader,
-} from '@kubohiroya/turbowarp-tm/posenet';
+} from '@kubohiroya/turbowarp-teachable-machine/posenet';
 
 const projectBundle = await createPoseNetProjectBundleFromLoader((file) =>
   readFile(new URL(import.meta.resolve(file.packageSpecifier))),
@@ -121,13 +125,13 @@ requests fail closed with `TM-POSENET-*` error codes.
 
 ### Composition API
 
-Composite runtimes can import `@kubohiroya/turbowarp-tm/composition` without registering the
+Composite runtimes can import `@kubohiroya/turbowarp-teachable-machine/composition` without registering the
 Standalone extension or adding blocks. The caller supplies an already-bundled Teachable Machine
 Pose runtime and validated model bytes, so this path does not download runtime scripts or model
 files.
 
 ```js
-import {createTMComposition} from '@kubohiroya/turbowarp-tm/composition';
+import {createTMComposition} from '@kubohiroya/turbowarp-teachable-machine/composition';
 
 const pose = createTMComposition({
   runtime: bundledTMRuntime,
@@ -498,8 +502,8 @@ downloaded file from the dialog's **Files** tab, never from its **URL** tab.
 `video.play()` on a page with no user activation, which surfaces as `NotAllowedError: play() failed
 because the user didn't interact with the document first.` Clicking the green flag counts, so an
 ordinary project is fine; a packaged project that starts recognition on its own has to wait for a
-button press before `start camera`. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/#troubleshooting)
-or [Japanese troubleshooting section](https://kubohiroya.github.io/turbowarp-tm/ja/#troubleshooting)
+button press before `start camera`. See the illustrated guide's [troubleshooting section](https://kubohiroya.github.io/turbowarp-teachable-machine/#troubleshooting)
+or [Japanese troubleshooting section](https://kubohiroya.github.io/turbowarp-teachable-machine/ja/#troubleshooting)
 for step-by-step checks.
 
 ## Blocks
@@ -998,7 +1002,7 @@ exact-version README examples, Pages badges, and release tag aligned with it.
 ### npm publishing
 
 npm publication uses GitHub Actions trusted publishing rather than a long-lived write token. The
-npm package settings must trust `kubohiroya/turbowarp-tm`, workflow file
+npm package settings must trust `kubohiroya/turbowarp-teachable-machine`, workflow file
 `publish-npm.yml`, for `npm publish`. After the annotated release tag and GitHub Release exist,
 dispatch **Publish npm package** with that tag. The workflow checks out the tag, verifies that it
 exactly matches `package.json`, runs the complete check, and publishes through a short-lived OIDC

@@ -1,7 +1,7 @@
 import {chmod, cp, mkdir, rm} from 'node:fs/promises';
 
 /**
- * The WASM backend fetches its binary at run time. TurboWarp TM serves the
+ * The WASM backend fetches its binary at run time. TurboWarp Teachable Machine serves the
  * binaries from its own package so the extension keeps one pinned supply
  * instead of reaching for a second npm package on a CDN.
  */

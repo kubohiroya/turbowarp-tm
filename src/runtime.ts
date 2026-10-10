@@ -197,5 +197,5 @@ const runtimeMetadata = Object.freeze({
   teachableMachinePose: dependencyVersions['@teachablemachine/pose'],
   assetBase: runtimeAssetBase
 });
-runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-tm/runtime')] = runtimeMetadata;
+runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-teachable-machine/runtime')] = runtimeMetadata;
 runtimeGlobal[Symbol.for('@kubohiroya/turbowarp-teachablemachine/runtime')] = runtimeMetadata;
