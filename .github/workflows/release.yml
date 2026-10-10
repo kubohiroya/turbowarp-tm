@@ -26,7 +26,7 @@ jobs:
       - name: Create ZIP archive
         run: |
           cd dist
-          zip -r ../turbowarp-tm.zip .
+          zip -r ../turbowarp-teachable-machine.zip .
       - name: Create npm package archive
         run: npm pack --ignore-scripts
       - uses: softprops/action-gh-release@v2
@@ -47,5 +47,5 @@ jobs:
             dist/posenet/mobilenet-v1-075-stride16/group1-shard1of2.bin
             dist/posenet/mobilenet-v1-075-stride16/group1-shard2of2.bin
             dist/THIRD_PARTY_NOTICES.md
-            kubohiroya-turbowarp-tm-*.tgz
-            turbowarp-tm.zip
+            kubohiroya-turbowarp-teachable-machine-*.tgz
+            turbowarp-teachable-machine.zip

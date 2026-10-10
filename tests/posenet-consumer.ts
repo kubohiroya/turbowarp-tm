@@ -7,7 +7,7 @@ import {
   type PoseNetProjectBundle,
   type TMRuntimeLoadOptions,
   type TMBrowserRuntime
-} from '@kubohiroya/turbowarp-tm/posenet';
+} from '@kubohiroya/turbowarp-teachable-machine/posenet';
 
 const loadFile: PoseNetBundleFileLoader = async (file) => {
   const specifier: string = file.packageSpecifier;

@@ -144,7 +144,7 @@ describe('TMExtension', () => {
     };
     expect(info.id).toBe('kubohiroyatm');
     expect(info.docsURI).toBe(DOCS_URI);
-    expect(info.docsURI).toBe('https://kubohiroya.github.io/turbowarp-tm/');
+    expect(info.docsURI).toBe('https://kubohiroya.github.io/turbowarp-teachable-machine/');
     expect(info.blockIconURI).toBe(BLOCK_ICON_URI);
     const iconSvg = decodeURIComponent(BLOCK_ICON_URI.slice('data:image/svg+xml,'.length));
     expect(iconSvg).toContain('viewBox="0 0 64 64"');

@@ -3,7 +3,7 @@ import {copyFile, readFile, writeFile} from 'node:fs/promises';
 const packageMetadata = JSON.parse(await readFile('package.json', 'utf8'));
 const dependencies = packageMetadata.devDependencies;
 const noticeUrl =
-  `https://github.com/kubohiroya/turbowarp-tm/blob/v${packageMetadata.version}/` +
+  `https://github.com/kubohiroya/turbowarp-teachable-machine/blob/v${packageMetadata.version}/` +
   'THIRD_PARTY_NOTICES.md';
 
 function banner(components) {

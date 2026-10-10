@@ -30,7 +30,7 @@ export interface ComputeBackendSelection {
     readonly attempts: ReadonlyArray<ComputeBackendAttempt>;
 }
 /**
- * The steps a backend has to survive before TurboWarp TM loads a model onto it.
+ * The steps a backend has to survive before TurboWarp Teachable Machine loads a model onto it.
  * `verify` runs a real convolution because an adapter can be present and a
  * backend can register while its shader compilation still fails on the device.
  */

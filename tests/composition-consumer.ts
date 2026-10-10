@@ -20,7 +20,7 @@ import {
   type TMComposition,
   type TMComputeController,
   type TMCompositionRuntime
-} from '@kubohiroya/turbowarp-tm/composition';
+} from '@kubohiroya/turbowarp-teachable-machine/composition';
 
 declare const runtime: TMCompositionRuntime;
 declare const compute: TMComputeController;

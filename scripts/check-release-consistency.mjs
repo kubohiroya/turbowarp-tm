@@ -136,7 +136,7 @@ for (const path of ['.github/workflows/ci.yml', '.github/workflows/release.yml']
   const legacyArchiveName = 'turbowarp-' + 'tm' + 'pose';
   const legacyBundlePath = 'dist/' + 'tm' + 'pose.js';
   if (source.includes(legacyArchiveName) || source.includes(legacyBundlePath)) {
-    errors.push(`${path} must publish TurboWarp TM artifact names`);
+    errors.push(`${path} must publish TurboWarp Teachable Machine artifact names`);
   }
 }
 

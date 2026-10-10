@@ -1,16 +1,16 @@
 {
-  "name": "@kubohiroya/turbowarp-tm",
+  "name": "@kubohiroya/turbowarp-teachable-machine",
   "version": "3.1.0",
   "description": "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
   "author": "Hiroya Kubo <hiroya@cuc.ac.jp>",
   "license": "MPL-2.0",
-  "homepage": "https://github.com/kubohiroya/turbowarp-tm#readme",
+  "homepage": "https://github.com/kubohiroya/turbowarp-teachable-machine#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kubohiroya/turbowarp-tm.git"
+    "url": "git+https://github.com/kubohiroya/turbowarp-teachable-machine.git"
   },
   "bugs": {
-    "url": "https://github.com/kubohiroya/turbowarp-tm/issues"
+    "url": "https://github.com/kubohiroya/turbowarp-teachable-machine/issues"
   },
   "exports": {
     "./composition": {

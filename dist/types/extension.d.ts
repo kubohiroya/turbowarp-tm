@@ -3,7 +3,7 @@ import { type FeatureFlags } from './config/feature-flags.js';
 import { type PoseOverlayConfidenceProperty } from './pose-overlay.js';
 export declare const EXTENSION_ID = "kubohiroyatm";
 export declare const VERSION: string;
-export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-tm/";
+export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-teachable-machine/";
 export declare const ACCUMULATED_POSE_CHANGED_EVENT = "TM_ACCUMULATED_POSE_CHANGED";
 export declare const BLOCK_ICON_URI: string;
 export type RecognitionMode = 'pose' | 'image' | 'audio';
