@@ -553,7 +553,7 @@
   }
   var package_default = {
   	name: "@kubohiroya/turbowarp-teachable-machine",
-  	version: "3.4.0",
+  	version: "3.4.1",
   	description: "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
   	author: "Hiroya Kubo <hiroya@cuc.ac.jp>",
   	license: "MPL-2.0",
@@ -1214,6 +1214,7 @@
   			const constraints = lease ? void 0 : cameraConstraints(this.resolvedCameraSelection());
   			if (constraints) await this.webcam.setup(constraints);
   			else await this.webcam.setup();
+  			this.ensureCameraCanvas();
   			initializeCameraReadbackContext(this.webcam.canvas);
   			if (!lease) await this.webcam.play();
   			this.attachPreviewToStage();
@@ -1229,6 +1230,23 @@
   			this.setLastError(error);
   			throw error;
   		}
+  	}
+  	/**
+  	* Give the camera the readback canvas `setup()` did not build.
+  	*
+  	* Upstream creates that canvas inside the same branch that opens the camera, so an injected
+  	* element skips the canvas with the `getUserMedia` call. 3.4.0 shipped assuming the two were
+  	* separate, and every leased start then failed at the first context request with "Webcam canvas
+  	* does not provide a 2D context" -- which is to say pose recognition did not start at all
+  	* wherever Camera Source was present. The canvas built here is the one upstream would have
+  	* built, so the mirrored centre crop every downstream reader expects is unchanged.
+  	*/
+  	ensureCameraCanvas() {
+  		if (!this.webcam || this.webcam.canvas) return;
+  		const canvas = document.createElement("canvas");
+  		canvas.width = this.webcam.width ?? 320;
+  		canvas.height = this.webcam.height ?? 240;
+  		this.webcam.canvas = canvas;
   	}
   	/**
   	* A lease on the shared camera, or null when Camera Source is not loaded.

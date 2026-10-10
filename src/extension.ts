@@ -48,6 +48,10 @@ export const EXTENSION_ID = 'kubohiroyatm';
 export const VERSION = `${packageMetadata.version}-typescript`;
 export const DOCS_URI = 'https://kubohiroya.github.io/turbowarp-teachable-machine/';
 export const ACCUMULATED_POSE_CHANGED_EVENT = 'TM_ACCUMULATED_POSE_CHANGED';
+/** The readback canvas size every downstream frame reader is written against. */
+export const CAMERA_FRAME_WIDTH = 320;
+export const CAMERA_FRAME_HEIGHT = 240;
+
 export const BLOCK_ICON_URI = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8h13M43 8h13v13M8 43v13h13M43 56h13V43M32 25v15M20 31l12 5 12-5M32 40 23 52M32 40l9 12"/><circle cx="32" cy="18" r="5"/></g></svg>'
 )}`;
@@ -695,19 +699,18 @@ export class TMExtension {
       if (!('Webcam' in runtime)) {
         throw new Error('Teachable Machine: Camera runtime is unavailable in the current mode.');
       }
-      this.webcam = new runtime.Webcam(320, 240, true);
+      this.webcam = new runtime.Webcam(CAMERA_FRAME_WIDTH, CAMERA_FRAME_HEIGHT, true);
       const lease = await this.acquireSharedCamera();
       if (lease) {
         this.cameraLease = lease;
-        // `Webcam.setup()` returns early when the video element is already in place, so this keeps
-        // the canvas it builds -- and with it the 320x240 mirrored centre crop every downstream
-        // reader expects -- while never reaching `getUserMedia`. Camera Source has already played
-        // the element, so there is nothing to play.
+        // Injecting the element is what keeps `setup()` away from `getUserMedia`, and Camera
+        // Source has already played it, so there is nothing to play either.
         this.webcam.webcam = lease.getFrameSource().element;
       }
       const constraints = lease ? undefined : cameraConstraints(this.resolvedCameraSelection());
       if (constraints) await this.webcam.setup(constraints);
       else await this.webcam.setup();
+      this.ensureCameraCanvas();
       initializeCameraReadbackContext(this.webcam.canvas);
       if (!lease) await this.webcam.play();
       this.attachPreviewToStage();
@@ -725,6 +728,24 @@ export class TMExtension {
       this.setLastError(error);
       throw error;
     }
+  }
+
+  /**
+   * Give the camera the readback canvas `setup()` did not build.
+   *
+   * Upstream creates that canvas inside the same branch that opens the camera, so an injected
+   * element skips the canvas with the `getUserMedia` call. 3.4.0 shipped assuming the two were
+   * separate, and every leased start then failed at the first context request with "Webcam canvas
+   * does not provide a 2D context" -- which is to say pose recognition did not start at all
+   * wherever Camera Source was present. The canvas built here is the one upstream would have
+   * built, so the mirrored centre crop every downstream reader expects is unchanged.
+   */
+  ensureCameraCanvas() {
+    if (!this.webcam || this.webcam.canvas) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = this.webcam.width ?? CAMERA_FRAME_WIDTH;
+    canvas.height = this.webcam.height ?? CAMERA_FRAME_HEIGHT;
+    this.webcam.canvas = canvas;
   }
 
   /**

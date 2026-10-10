@@ -1,6 +1,6 @@
 var package_default = {
 	name: "@kubohiroya/turbowarp-teachable-machine",
-	version: "3.4.0",
+	version: "3.4.1",
 	description: "A TurboWarp extension for recognition using Teachable Machine pose, image, and audio models.",
 	author: "Hiroya Kubo <hiroya@cuc.ac.jp>",
 	license: "MPL-2.0",

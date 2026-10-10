@@ -882,9 +882,25 @@ describe('TMExtension', () => {
       stop: vi.fn()
     };
     const sharedVideo = {srcObject: {getVideoTracks: () => [videoTrack], getTracks: () => [videoTrack]}};
-    const setup = vi.fn(async () => undefined);
     const play = vi.fn(async () => undefined);
-    const webcam = {canvas, webcam: null, setup, play, update: vi.fn()};
+    // Upstream builds the readback canvas inside the branch that opens the camera, so a webcam
+    // that already has an element comes back from setup() with no canvas at all. 3.4.0's fake
+    // handed one over up front, which is why it did not notice that leasing left none.
+    const webcam: Record<string, unknown> = {
+      canvas: null,
+      webcam: null,
+      width: 320,
+      height: 240,
+      play,
+      update: vi.fn()
+    };
+    const setup = vi.fn(async () => {
+      if (!webcam.webcam) {
+        webcam.webcam = {srcObject: null};
+        webcam.canvas = canvas;
+      }
+    });
+    webcam.setup = setup;
     function Webcam() {
       return webcam;
     }
@@ -912,9 +928,13 @@ describe('TMExtension', () => {
     expect(webcam.webcam).toBe(sharedVideo);
     expect(setup).toHaveBeenCalledWith();
     expect(play).not.toHaveBeenCalled();
-    // The canvas still carries the frames, so the 320x240 mirrored crop every reader expects and
-    // the device reporters are unchanged.
-    expect(canvas.getContext).toHaveBeenCalledWith('2d');
+    // setup() built nothing, so the extension owes the camera its readback canvas -- without one
+    // the first context request throws and recognition never starts.
+    expect(webcam.canvas).not.toBe(canvas);
+    const leasedCanvas = webcam.canvas as {width: number; height: number; getContext: ReturnType<typeof vi.fn>};
+    expect(leasedCanvas.width).toBe(320);
+    expect(leasedCanvas.height).toBe(240);
+    expect(leasedCanvas.getContext).toHaveBeenCalledWith('2d');
     expect(extension.cameraDeviceIdReporter()).toBe('shared-id');
 
     extension.stopCamera();
@@ -930,8 +950,10 @@ describe('TMExtension', () => {
     const stage = createElement();
     const sharedVideo = {srcObject: {getVideoTracks: () => [], getTracks: () => []}};
     const webcam = {
-      canvas: createElement('CANVAS'),
+      canvas: null,
       webcam: null,
+      width: 320,
+      height: 240,
       setup: vi.fn(async () => undefined),
       play: vi.fn(async () => undefined),
       update: vi.fn()

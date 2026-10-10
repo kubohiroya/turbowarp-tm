@@ -5,6 +5,9 @@ export declare const EXTENSION_ID = "kubohiroyatm";
 export declare const VERSION: string;
 export declare const DOCS_URI = "https://kubohiroya.github.io/turbowarp-teachable-machine/";
 export declare const ACCUMULATED_POSE_CHANGED_EVENT = "TM_ACCUMULATED_POSE_CHANGED";
+/** The readback canvas size every downstream frame reader is written against. */
+export declare const CAMERA_FRAME_WIDTH = 320;
+export declare const CAMERA_FRAME_HEIGHT = 240;
 export declare const BLOCK_ICON_URI: string;
 export type RecognitionMode = 'pose' | 'image' | 'audio';
 export interface TeachableMachineRuntime {
@@ -152,6 +155,17 @@ export declare class TMExtension {
     ensureLibrariesLoaded(): Promise<void>;
     cleanupCameraResources(): void;
     startCamera(): Promise<void>;
+    /**
+     * Give the camera the readback canvas `setup()` did not build.
+     *
+     * Upstream creates that canvas inside the same branch that opens the camera, so an injected
+     * element skips the canvas with the `getUserMedia` call. 3.4.0 shipped assuming the two were
+     * separate, and every leased start then failed at the first context request with "Webcam canvas
+     * does not provide a 2D context" -- which is to say pose recognition did not start at all
+     * wherever Camera Source was present. The canvas built here is the one upstream would have
+     * built, so the mirrored centre crop every downstream reader expects is unchanged.
+     */
+    ensureCameraCanvas(): void;
     /**
      * A lease on the shared camera, or null when Camera Source is not loaded.
      *
